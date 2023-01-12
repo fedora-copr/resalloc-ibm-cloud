@@ -1,24 +1,14 @@
 #! /usr/bin/python3
 
-import argparse
-import datetime
 import os
-import subprocess
 import sys
 
-from ibm_vpc import VpcV1
-from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
-
-DEFAULT_TOKEN_FILE = "{{ ibmcloud_token_file }}"
-SERVICE_URL = "https://jp-tok.iaas.cloud.ibm.com/v1"
-
-# Using the highest value possible
-LIMIT = 100
+from ressaloc_ibm_cloud.helpers import default_arg_parser, get_service
+from ressaloc_ibm_cloud.constants import LIMIT
 
 
 def _get_arg_parser():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--token-file", default=DEFAULT_TOKEN_FILE)
+    parser = default_arg_parser()
     parser.add_argument("--pool")
     return parser
 
@@ -32,16 +22,10 @@ def _main():
         sys.exit(1)
 
     cmd = f"source {opts.token_file} ; echo $IBMCLOUD_API_KEY"
-    output = subprocess.check_output(cmd, shell=True)
-    token = output.decode("utf-8").strip().rsplit("\n", maxsplit=1)[-1]
-    authenticator = IAMAuthenticator(token)
-    now = datetime.datetime.now()
-    service = VpcV1(now.strftime('%Y-%m-%d'), authenticator=authenticator)
-    service.set_service_url(SERVICE_URL)
+    service = get_service(cmd, opts)
 
     # Gather the list of all resources here
     resources = set()
-
     instances = service.list_instances(limit=LIMIT).result["instances"]
     for server in instances:
         # Resalloc works with underscores, which is not allowed in IBM Cloud

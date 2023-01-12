@@ -4,41 +4,18 @@
 Start a new VM in IBM Cloud under the copr-team account.
 """
 
-import argparse
-import datetime
+
+import json
 import logging
 import pipes
 import os
 import random
 import subprocess
 import sys
-
 import requests
 
-from ibm_vpc import VpcV1
-from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
-
-DEFAULT_PLAYBOOK = "{{ provision_directory }}/libvirt-provision.yml"
-DEFAULT_TOKEN_FILE = "{{ ibmcloud_token_file }}"
-DEFAULT_IMAGE = "{{ copr_builder_images.ibm_cloud.s390x }}"
-
-VPC_ID = "r022-8438169e-d881-4bda-b603-d31fdf0f8b3a"
-SECURITY_GROUP_ID = "r022-bf49b90e-c00f-4c68-8707-2936b47b286b"
-SSH_KEY_ID = "r022-3918e368-8e00-4e23-9119-5e3ce1eb33bd"
-INSTANCE_TYPE = "cz2-2x4"
-SERVICE_URL = "https://jp-tok.iaas.cloud.ibm.com/v1"
-
-ZONES = {
-    "jp-tok-1": {
-        "subnet_id": "02e7-84755ffa-97bb-4067-b618-24c788c901cb",
-    },
-    "jp-tok-2": {
-        "subnet_id": "02f7-98674f68-aae1-4ea1-a889-5a0b7a07f4b8",
-    },
-    "jp-tok-3": {
-        "subnet_id": "02g7-6d92562d-b868-411f-a962-99271d609ba6",
-    },
-}
+from ressaloc_ibm_cloud.helpers import default_arg_parser, get_service
+from ressaloc_ibm_cloud.constants import LIMIT
 
 
 def resalloc_to_ibmcloud_name(name):
@@ -56,7 +33,7 @@ def bind_floating_ip(service, instance_id, opts):
 
     log = opts.log
     log.info("Bind floating IP")
-    response_list = service.list_floating_ips().get_result()['floating_ips']
+    response_list = service.list_floating_ips().get_result()["floating_ips"]
     floating_ip_uuid = None
     for item in response_list:
         if item["name"] != opts.floating_ip_name:
@@ -64,8 +41,8 @@ def bind_floating_ip(service, instance_id, opts):
         if item["status"] != "available":
             log.error("Floating IP %s is already used", opts.floating_ip_name)
             sys.exit(1)
-        floating_ip_uuid = item['id']
-        floating_ip_address =  item['address']
+        floating_ip_uuid = item["id"]
+        floating_ip_address = item["address"]
 
     if floating_ip_uuid is None:
         log.error("UUID for Floating IP %s not found", opts.floating_ip_name)
@@ -87,14 +64,17 @@ def allocate_and_assign_ip(service, opts):
     Allocate and assign a Floating IP to an existing machine in one call.
     """
 
-    url = SERVICE_URL + "/floating_ips"
+    service_url = (
+        opts.service_url[:-1] if opts.service_url[-1] == "/" else opts.service_url
+    )
+    url = service_url + "/floating_ips"
     headers = {
         "Accept": "application/json",
         "Authorization": "Bearer " + service.authenticator.token_manager.get_token(),
     }
     params = {
-        'version': "2022-01-18",
-        'generation': "2",
+        "version": "2022-01-18",
+        "generation": "2",
     }
     data = {
         "name": opts.instance_name,
@@ -133,13 +113,14 @@ def create_instance(service, instance_name, opts):
     """
 
     log = opts.log
+    zones = json.loads(opts.zones)
 
     instance_prototype_model = {
-        "keys": [{"id": SSH_KEY_ID}],
+        "keys": [{"id": opts.ssh_key_id}],
         "name": instance_name,
-        "profile": {"name": INSTANCE_TYPE},
+        "profile": {"name": opts.instance_type},
         "vpc": {
-            "id": VPC_ID,
+            "id": opts.vpc_id,
         },
         "boot_volume_attachment": {
             "volume": {
@@ -152,25 +133,27 @@ def create_instance(service, instance_name, opts):
         },
         "image": {"id": opts.image_uuid},
         "primary_network_interface": {
-            'name': 'primary-network-interface',
-            'subnet': {
-                "id": ZONES[opts.zone]["subnet_id"],
+            "name": "primary-network-interface",
+            "subnet": {
+                "id": zones[opts.zone],
             },
             "security_groups": [
-                {"id": SECURITY_GROUP_ID},
+                {"id": opts.security_group_id},
             ],
         },
         "zone": {
             "name": opts.zone,
         },
-        "volume_attachments": [{
-            "volume": {
-              "name": instance_name + "-swap",
-              "capacity": 168,
-              "profile": {"name": "general-purpose"},
-            },
-            "delete_volume_on_instance_delete": True,
-        }],
+        "volume_attachments": [
+            {
+                "volume": {
+                    "name": instance_name + "-swap",
+                    "capacity": 168,
+                    "profile": {"name": "general-purpose"},
+                },
+                "delete_volume_on_instance_delete": True,
+            }
+        ],
     }
 
     ip_address = None
@@ -201,7 +184,7 @@ def delete_all_ips(service, opts):
     Go through all reserved IPs, and remove all which are not assigned
     to any VM
     """
-    response_list = service.list_floating_ips().get_result()['floating_ips']
+    response_list = service.list_floating_ips().get_result()["floating_ips"]
     for fip in response_list:
         if fip["status"] != "available":
             continue
@@ -223,19 +206,19 @@ def delete_instance(service, instance_name, opts):
 
 
 def delete_instance_attempt(service, instance_name, opts):
-    """ one attempt to delete instance by it's name """
+    """one attempt to delete instance by it's name"""
     log = opts.log
     log.info("Deleting instance %s", instance_name)
 
     delete_instance_id = None
-    response_list = service.list_instances().get_result()['instances']
+    response_list = service.list_instances().get_result()["instances"]
     for item in response_list:
-        log.debug("Available: %s %s %s", item['id'], item['name'], item['status'])
-        if instance_name == item['name']:
-            delete_instance_id = item['id']
+        log.debug("Available: %s %s %s", item["id"], item["name"], item["status"])
+        if instance_name == item["name"]:
+            delete_instance_id = item["id"]
 
     floating_ip_id = None
-    response_list = service.list_floating_ips().get_result()['floating_ips']
+    response_list = service.list_floating_ips().get_result()["floating_ips"]
     for floating_ip in response_list:
         if floating_ip["name"].startswith(instance_name):
             floating_ip_id = floating_ip["id"]
@@ -253,7 +236,7 @@ def delete_instance_attempt(service, instance_name, opts):
     # Query all volumes only after already potentionaly deleting an instance.
     # The volumes might have been deleted automatically
     volume_ids = []
-    volumes = service.list_volumes(limit=100).result["volumes"]
+    volumes = service.list_volumes(limit=LIMIT).result["volumes"]
     for volume in volumes:
         if not volume["name"].startswith(instance_name):
             continue
@@ -273,36 +256,49 @@ def delete_instance_attempt(service, instance_name, opts):
 
 
 def _get_arg_parser():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--token-file", default=DEFAULT_TOKEN_FILE)
+    parser = default_arg_parser()
     parser.add_argument("--log-level", default="info")
-    subparsers = parser.add_subparsers(dest='subparser')
+
+    subparsers = parser.add_subparsers(dest="subparser")
     subparsers.required = True
     parser_create = subparsers.add_parser(
-        "create", help="Create an instance in IBM Cloud")
+        "create", help="Create an instance in IBM Cloud"
+    )
     parser_create.add_argument("name")
-    parser_create.add_argument("--playbook", default=DEFAULT_PLAYBOOK)
-    parser_create.add_argument("--image-uuid", default=DEFAULT_IMAGE)
+    parser_create.add_argument("--playbook", help="Path to playbook", required=True)
+    parser_create.add_argument("--image-uuid", required=True)
+    parser_create.add_argument("--vpc-id", required=True)
+    parser_create.add_argument("--security-group-id", required=True)
+    parser_create.add_argument("--ssh-key-id", required=True)
+    parser_create.add_argument("--instance-type", help="e.g. cz2-2x4", required=True)
     parser_create.add_argument("--floating-ip-name", default=None)
-    zones_default=",".join(ZONES.keys())
-    parser_create.add_argument("--zones", help=(
-        "A comma separate list of zone names.  Default='{default}'. "
-        "The script starts the VM randomly randomly in one of the "
-        "specified zones.".format(default=zones_default)),
-        default=zones_default)
+    parser_create.add_argument(
+        "--zones",
+        help=(
+            "Path to json file with zones as keys and subnet id as value."
+            'content of file will look like: {"jp-tok-1": "secret-subnet-id-123-abcd", ...}'
+        ),
+        required=True,
+    )
     parser_delete = subparsers.add_parser(
-        "delete", help="Delete instance by it's name from IBM Cloud")
+        "delete", help="Delete instance by it's name from IBM Cloud"
+    )
     parser_delete.add_argument("name")
-    ips = subparsers.add_parser("delete-free-floating-ips",
-                                help="Clean all IPs without an assigned VM")
+    ips = subparsers.add_parser(
+        "delete-free-floating-ips", help="Clean all IPs without an assigned VM"
+    )
     return parser
 
 
 def _wait_for_ssh(floating_ip):
-    cmd = ["resalloc-aws-wait-for-ssh",
-           "--log", "debug",
-           "--timeout", "240",
-           floating_ip]
+    cmd = [
+        "resalloc-aws-wait-for-ssh",
+        "--log",
+        "debug",
+        "--timeout",
+        "240",
+        floating_ip,
+    ]
     subprocess.check_call(cmd, stdout=sys.stderr)
 
 
@@ -343,21 +339,12 @@ def detect_floating_ip_name(opts):
 def _main():
     opts = _get_arg_parser().parse_args()
     log_level = getattr(logging, opts.log_level.upper())
-    logging.basicConfig(format='%(levelname)s: %(message)s', level=log_level)
+    logging.basicConfig(format="%(levelname)s: %(message)s", level=log_level)
     log = logging.getLogger()
     opts.log = log
 
-    cmd = "source {} ; echo $IBMCLOUD_API_KEY".format(
-        pipes.quote(opts.token_file))
-    output = subprocess.check_output(cmd, shell=True)
-    token = output.decode("utf-8").strip().rsplit("\n", maxsplit=1)[-1]
-    authenticator = IAMAuthenticator(token)
-
-    now = datetime.datetime.now()
-    service = VpcV1(now.strftime('%Y-%m-%d'), authenticator=authenticator)
-
-    # We work with Tokyo only for now.
-    service.set_service_url(SERVICE_URL)
+    cmd = "source {} ; echo $IBMCLOUD_API_KEY".format(pipes.quote(opts.token_file))
+    service = get_service(cmd, opts)
 
     if hasattr(opts, "name"):
         name = resalloc_to_ibmcloud_name(opts.name)
@@ -365,7 +352,7 @@ def _main():
         opts.instance = "production" if "-prod-" in name else "devel"
 
     if opts.subparser == "create":
-        allowed_zones = [x.strip() for x in opts.zones.split(",")]
+        allowed_zones = [json.loads(opts.zones).keys()]
         opts.zone = random.choice(allowed_zones)
         # detect_floating_ip_name(opts)
         create_instance(service, name, opts)
@@ -373,6 +360,7 @@ def _main():
         delete_instance(service, name, opts)
     elif opts.subparser == "delete-free-floating-ips":
         delete_all_ips(service, opts)
+
 
 if __name__ == "__main__":
     _main()

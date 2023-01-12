@@ -1,0 +1,30 @@
+import argparse
+import subprocess
+import datetime
+from argparse import Namespace
+
+from ibm_vpc import VpcV1
+from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
+
+
+def default_arg_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--token-file", help="Path to IBM cloud token file", required=True
+    )
+    parser.add_argument(
+        "--service-url",
+        help="SERVICE URL e.g. https://jp-tok.iaas.cloud.ibm.com/v1",
+        required=True,
+    )
+    return parser
+
+
+def get_service(cmd: str, opts: Namespace):
+    output = subprocess.check_output(cmd, shell=True)
+    token = output.decode("utf-8").strip().rsplit("\n", maxsplit=1)[-1]
+    authenticator = IAMAuthenticator(token)
+    now = datetime.datetime.now()
+    service = VpcV1(now.strftime("%Y-%m-%d"), authenticator=authenticator)
+    service.set_service_url(opts.service_url)
+    return service
