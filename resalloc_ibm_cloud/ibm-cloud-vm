@@ -14,8 +14,8 @@ import subprocess
 import sys
 import requests
 
-from ressaloc_ibm_cloud.helpers import default_arg_parser, get_service
-from ressaloc_ibm_cloud.constants import LIMIT
+from resalloc_ibm_cloud.helpers import default_arg_parser, get_service
+from resalloc_ibm_cloud.constants import LIMIT
 
 
 def resalloc_to_ibmcloud_name(name):
