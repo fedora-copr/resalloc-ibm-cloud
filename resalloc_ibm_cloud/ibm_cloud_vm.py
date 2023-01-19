@@ -101,7 +101,7 @@ def run_playbook(host, opts):
     """
     Run ansible-playbook against the given hostname
     """
-    cmd = ["ansible-playbook", opts.playbook, "--inventory", "{},".format(host)]
+    cmd = ["ansible-playbook", opts.playbook, "--inventory", f"{host},"]
     subprocess.check_call(cmd, stdout=sys.stderr)
 
 
@@ -178,7 +178,7 @@ def create_instance(service, instance_name, opts):
         raise
 
 
-def delete_all_ips(service, opts):
+def delete_all_ips(service):
     """
     Go through all reserved IPs, and remove all which are not assigned
     to any VM
@@ -199,9 +199,8 @@ def delete_instance(service, instance_name, opts):
         try:
             delete_instance_attempt(service, instance_name, opts)
             break
-        except:
+        except RuntimeError:
             opts.log.exception("Attempt to delete instance failed")
-            pass
 
 
 def delete_instance_attempt(service, instance_name, opts):
@@ -283,7 +282,7 @@ def _get_arg_parser():
         "delete", help="Delete instance by it's name from IBM Cloud"
     )
     parser_delete.add_argument("name")
-    ips = subparsers.add_parser(
+    subparsers.add_parser(
         "delete-free-floating-ips", help="Clean all IPs without an assigned VM"
     )
     return parser
@@ -331,18 +330,20 @@ def detect_floating_ip_name(opts):
     if opts.instance == "devel":
         id_in_pool += 100
 
-    opts.floating_ip_name = "copr-builder-{}".format(str(id_in_pool).zfill(3))
-    opts.log.info("Using Floating IP copr-builder-%s", opts.floating_ip_name)
+    opts.floating_ip_name = f"copr-builder-{str(id_in_pool).zfill(3)}"
+    opts.log.info(f"Using Floating IP copr-builder-{opts.floating_ip_name}")
 
 
 def main():
+    """Entrypoint to the script."""
+
     opts = _get_arg_parser().parse_args()
     log_level = getattr(logging, opts.log_level.upper())
     logging.basicConfig(format="%(levelname)s: %(message)s", level=log_level)
     log = logging.getLogger()
     opts.log = log
 
-    cmd = "source {} ; echo $IBMCLOUD_API_KEY".format(pipes.quote(opts.token_file))
+    cmd = f"source {pipes.quote(opts.token_file)} ; echo $IBMCLOUD_API_KEY"
     service = get_service(cmd, opts)
 
     if hasattr(opts, "name"):
@@ -360,4 +361,4 @@ def main():
     elif opts.subparser == "delete":
         delete_instance(service, name, opts)
     elif opts.subparser == "delete-free-floating-ips":
-        delete_all_ips(service, opts)
+        delete_all_ips(service)

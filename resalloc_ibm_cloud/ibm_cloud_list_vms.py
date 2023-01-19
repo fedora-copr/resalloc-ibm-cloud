@@ -1,3 +1,7 @@
+"""
+List all IBM Cloud instances.
+"""
+
 import os
 import sys
 
@@ -12,6 +16,8 @@ def _get_arg_parser():
 
 
 def main():
+    """An entrypoint to the script."""
+
     opts = _get_arg_parser().parse_args()
 
     pool_id = opts.pool or os.getenv("RESALLOC_POOL_ID")
