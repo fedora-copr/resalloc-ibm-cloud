@@ -113,7 +113,8 @@ def create_instance(service, instance_name, opts):
     """
 
     log = opts.log
-    zones = json.loads(opts.zones)
+    with open(opts.zones, "r", encoding="utf-8") as zone_file:
+        zones = json.load(zone_file)
 
     instance_prototype_model = {
         "keys": [{"id": opts.ssh_key_id}],
@@ -352,7 +353,9 @@ def _main():
         opts.instance = "production" if "-prod-" in name else "devel"
 
     if opts.subparser == "create":
-        allowed_zones = [json.loads(opts.zones).keys()]
+        with open(opts.zones, "r", encoding="utf-8") as zone_file:
+            allowed_zones = list(json.load(zone_file).keys())
+
         opts.zone = random.choice(allowed_zones)
         # detect_floating_ip_name(opts)
         create_instance(service, name, opts)
