@@ -6,8 +6,8 @@ List all IBM Cloud instances that are in Deleting state
 
 import sys
 
-from ressaloc_ibm_cloud.helpers import default_arg_parser, get_service
-from ressaloc_ibm_cloud.constants import LIMIT
+from resalloc_ibm_cloud.helpers import default_arg_parser, get_service
+from resalloc_ibm_cloud.constants import LIMIT
 
 
 def _get_arg_parser():
