@@ -18,16 +18,15 @@ srpm_build_deps:
   - python3-setuptools_scm
 
 jobs:
-  - job: copr_build
+  - &copr
+    job: copr_build
     trigger: pull_request
     targets:
       - fedora-all
 
-  - job: copr_build
+  - <<: *copr
     trigger: commit
-    branch: main
-    targets:
-      - fedora-all
-    project: resalloc-ibm-cloud
-    list_on_homepage: True
-    preserve_project: True
+    metadata:
+      owner: "praiskup"
+      project: "resalloc"
+      branch: main
