@@ -17,9 +17,9 @@ ibm-cloud-sdk-core = ">=3.13.0"
 
 
 [tool.poetry.scripts]
-ibm-cloud-list-deleting-vms = "resalloc_ibm_cloud:ibm-cloud-list-deleting-vms"
-ibm-cloud-list-vms = "resalloc_ibm_cloud:ibm-cloud-list-vms"
-ibm-cloud-vm = "resalloc_ibm_cloud:ibm-cloud-vm"
+ibm-cloud-list-deleting-vms = "resalloc_ibm_cloud.ibm_cloud_list_deleting_vms:main"
+ibm-cloud-list-vms = "resalloc_ibm_cloud.ibm_cloud_list_vms:main"
+ibm-cloud-vm = "resalloc_ibm_cloud.ibm_cloud_vm:main"
 
 
 [build-system]
