@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "resalloc-ibm-cloud"
+version = "0.1.0"
+description = "Resource allocator scripts for IBM cloud"
+authors = ["Copr team <copr-team@redhat.com>"]
+maintainers = ["Copr team <copr-team@redhat.com>"]
+license = "GPLv2"
+readme = "README.md"
+homepage = "https://github.com/fedora-copr/resalloc-ibm-cloud"
+repository = "https://github.com/fedora-copr/resalloc-ibm-cloud"
+
+
+[tool.poetry.dependencies]
+python = "^3.6"
+ibm-vpc = ">=0.11.0"
+ibm-cloud-sdk-core = ">=3.13.0"
+
+
+[tool.poetry.scripts]
+ibm-cloud-list-deleting-vms = "resalloc_ibm_cloud:ibm-cloud-list-deleting-vms"
+ibm-cloud-list-vms = "resalloc_ibm_cloud:ibm-cloud-list-vms"
+ibm-cloud-vm = "resalloc_ibm_cloud:ibm-cloud-vm"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
