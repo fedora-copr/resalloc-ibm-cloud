@@ -1,5 +1,3 @@
-#! /usr/bin/python3
-
 import os
 import sys
 
@@ -13,7 +11,7 @@ def _get_arg_parser():
     return parser
 
 
-def _main():
+def main():
     opts = _get_arg_parser().parse_args()
 
     pool_id = opts.pool or os.getenv("RESALLOC_POOL_ID")
@@ -45,7 +43,3 @@ def _main():
     for name in resources:
         # The only stdout output comes here!
         print(name)
-
-
-if __name__ == "__main__":
-    sys.exit(_main())

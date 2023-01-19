@@ -1,5 +1,3 @@
-#! /usr/bin/python3
-
 """
 Start a new VM in IBM Cloud under the copr-team account.
 """
@@ -337,7 +335,7 @@ def detect_floating_ip_name(opts):
     opts.log.info("Using Floating IP copr-builder-%s", opts.floating_ip_name)
 
 
-def _main():
+def main():
     opts = _get_arg_parser().parse_args()
     log_level = getattr(logging, opts.log_level.upper())
     logging.basicConfig(format="%(levelname)s: %(message)s", level=log_level)
@@ -363,9 +361,3 @@ def _main():
         delete_instance(service, name, opts)
     elif opts.subparser == "delete-free-floating-ips":
         delete_all_ips(service, opts)
-
-
-if __name__ == "__main__":
-    _main()
-
-# vi: ft=python

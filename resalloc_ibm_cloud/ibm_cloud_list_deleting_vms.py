@@ -1,5 +1,3 @@
-#! /usr/bin/python3
-
 """
 List all IBM Cloud instances that are in Deleting state
 """
@@ -15,7 +13,7 @@ def _get_arg_parser():
     return parser
 
 
-def _main():
+def main():
     opts = _get_arg_parser().parse_args()
     cmd = f"source {opts.token_file} ; echo $IBMCLOUD_API_KEY"
     service = get_service(cmd, opts)
@@ -25,7 +23,3 @@ def _main():
         # Resalloc works with underscores, which is not allowed in IBM Cloud
         if server["status"] == "deleting":
             print("{} {}".format(server["id"], server["name"]))
-
-
-if __name__ == "__main__":
-    sys.exit(_main())
