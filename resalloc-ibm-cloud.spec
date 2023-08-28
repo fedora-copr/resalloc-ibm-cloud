@@ -4,8 +4,8 @@ for maintaining VMs in IBM Cloud (starting, stopping, cleaning orphans, etc.).
 }
 
 Name:           resalloc-ibm-cloud
-Version:        0.1.0
-Release:        1%{?dist}
+Version:        1.0.0
+Release:        %autorelease
 Summary:        Resource allocator scripts for IBM cloud
 
 License:        GPLv2+
@@ -45,11 +45,10 @@ BuildRequires:  pyproject-rpm-macros
 %files -n %{name} -f %{pyproject_files}
 %license LICENSE
 %doc README.md
-%{_bindir}/ibm-cloud-list-deleting-vms
-%{_bindir}/ibm-cloud-list-vms
-%{_bindir}/ibm-cloud-vm
+%{_bindir}/resalloc-ibm-cloud-list-deleting-vms
+%{_bindir}/resalloc-ibm-cloud-list-vms
+%{_bindir}/resalloc-ibm-cloud-vm
 
 
 %changelog
-* Wed Jan 18 2023 Jiri Kyjovsky <j1.kyjovsky@gmail.com>
-- Initial package.
+%autochangelog

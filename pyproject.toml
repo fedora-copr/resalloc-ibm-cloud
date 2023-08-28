@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "resalloc-ibm-cloud"
-version = "0.1.0"
+version = "1.0.0"
 description = "Resource allocator scripts for IBM cloud"
 authors = ["Copr team <copr-team@redhat.com>"]
 maintainers = ["Copr team <copr-team@redhat.com>"]
@@ -17,9 +17,9 @@ ibm-cloud-sdk-core = ">=3.13.0"
 
 
 [tool.poetry.scripts]
-ibm-cloud-list-deleting-vms = "resalloc_ibm_cloud.ibm_cloud_list_deleting_vms:main"
-ibm-cloud-list-vms = "resalloc_ibm_cloud.ibm_cloud_list_vms:main"
-ibm-cloud-vm = "resalloc_ibm_cloud.ibm_cloud_vm:main"
+resalloc-ibm-cloud-list-deleting-vms = "resalloc_ibm_cloud.ibm_cloud_list_deleting_vms:main"
+resalloc-ibm-cloud-list-vms = "resalloc_ibm_cloud.ibm_cloud_list_vms:main"
+resalloc-ibm-cloud-vm = "resalloc_ibm_cloud.ibm_cloud_vm:main"
 
 
 [build-system]
