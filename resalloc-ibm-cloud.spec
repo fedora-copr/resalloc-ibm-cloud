@@ -49,9 +49,9 @@ install  -p -m 644 man/*.1 %buildroot%_mandir/man1
 %license LICENSE
 %doc README.md
 %_mandir/man1/resalloc-ibm-cloud*1*
-%{_bindir}/ibm-cloud-list-deleting-vms
-%{_bindir}/ibm-cloud-list-vms
-%{_bindir}/ibm-cloud-vm
+%{_bindir}/resalloc-ibm-cloud-list-deleting-vms
+%{_bindir}/resalloc-ibm-cloud-list-vms
+%{_bindir}/resalloc-ibm-cloud-vm
 
 
 %changelog
