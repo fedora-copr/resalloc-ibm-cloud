@@ -5,20 +5,15 @@ List all IBM Cloud instances.
 import os
 import sys
 
-from resalloc_ibm_cloud.helpers import default_arg_parser, get_service
+from resalloc_ibm_cloud.helpers import get_service
+from resalloc_ibm_cloud.argparsers import default_arg_parser
 from resalloc_ibm_cloud.constants import LIMIT
-
-
-def _get_arg_parser():
-    parser = default_arg_parser()
-    parser.add_argument("--pool")
-    return parser
 
 
 def main():
     """An entrypoint to the script."""
 
-    opts = _get_arg_parser().parse_args()
+    opts = default_arg_parser().parse_args()
 
     pool_id = opts.pool or os.getenv("RESALLOC_POOL_ID")
     if not pool_id:

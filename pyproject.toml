@@ -23,5 +23,18 @@ ibm-cloud-vm = "resalloc_ibm_cloud.ibm_cloud_vm:main"
 
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core", "argparse-manpage[setuptools]"]
 build-backend = "poetry.core.masonry.api"
+
+
+[tool.poetry.build]
+generate-setup-file = true
+script = "build.py"
+
+
+[tool.build_manpages]
+manpages = [
+    "man/resalloc-ibm-cloud-vm.1:function=vm_arg_parser:pyfile=resalloc_ibm_cloud/argparsers.py",
+    "man/resalloc-ibm-cloud-list-vms.1:function=vm_list_arg_parser:pyfile=resalloc_ibm_cloud/argparsers.py",
+    "man/resalloc-ibm-cloud-list-deleting-vms.1:function=default_arg_parser:pyfile=resalloc_ibm_cloud/argparsers.py",
+]

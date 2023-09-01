@@ -1,23 +1,9 @@
-import argparse
 import subprocess
 import datetime
 from argparse import Namespace
 
 from ibm_vpc import VpcV1
 from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
-
-
-def default_arg_parser():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--token-file", help="Path to IBM cloud token file", required=True
-    )
-    parser.add_argument(
-        "--service-url",
-        help="SERVICE URL e.g. https://jp-tok.iaas.cloud.ibm.com/v1",
-        required=True,
-    )
-    return parser
 
 
 def get_service(cmd: str, opts: Namespace):
