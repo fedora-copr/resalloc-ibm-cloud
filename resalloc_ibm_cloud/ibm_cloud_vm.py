@@ -12,7 +12,8 @@ import subprocess
 import sys
 import requests
 
-from resalloc_ibm_cloud.helpers import default_arg_parser, get_service
+from resalloc_ibm_cloud.helpers import get_service
+from resalloc_ibm_cloud.argparsers import vm_arg_parser
 from resalloc_ibm_cloud.constants import LIMIT
 
 
@@ -253,41 +254,6 @@ def delete_instance_attempt(service, instance_name, opts):
             log.debug("Delete volume request delivered")
 
 
-def _get_arg_parser():
-    parser = default_arg_parser()
-    parser.add_argument("--log-level", default="info")
-
-    subparsers = parser.add_subparsers(dest="subparser")
-    subparsers.required = True
-    parser_create = subparsers.add_parser(
-        "create", help="Create an instance in IBM Cloud"
-    )
-    parser_create.add_argument("name")
-    parser_create.add_argument("--playbook", help="Path to playbook", required=True)
-    parser_create.add_argument("--image-uuid", required=True)
-    parser_create.add_argument("--vpc-id", required=True)
-    parser_create.add_argument("--security-group-id", required=True)
-    parser_create.add_argument("--ssh-key-id", required=True)
-    parser_create.add_argument("--instance-type", help="e.g. cz2-2x4", required=True)
-    parser_create.add_argument("--floating-ip-name", default=None)
-    parser_create.add_argument(
-        "--zones",
-        help=(
-            "Path to json file with zones as keys and subnet id as value."
-            'content of file will look like: {"jp-tok-1": "secret-subnet-id-123-abcd", ...}'
-        ),
-        required=True,
-    )
-    parser_delete = subparsers.add_parser(
-        "delete", help="Delete instance by it's name from IBM Cloud"
-    )
-    parser_delete.add_argument("name")
-    subparsers.add_parser(
-        "delete-free-floating-ips", help="Clean all IPs without an assigned VM"
-    )
-    return parser
-
-
 def _wait_for_ssh(floating_ip):
     cmd = [
         "resalloc-aws-wait-for-ssh",
@@ -337,7 +303,7 @@ def detect_floating_ip_name(opts):
 def main():
     """Entrypoint to the script."""
 
-    opts = _get_arg_parser().parse_args()
+    opts = vm_arg_parser().parse_args()
     log_level = getattr(logging, opts.log_level.upper())
     logging.basicConfig(format="%(levelname)s: %(message)s", level=log_level)
     log = logging.getLogger()
