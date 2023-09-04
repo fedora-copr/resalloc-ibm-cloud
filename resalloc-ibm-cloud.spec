@@ -4,7 +4,7 @@ for maintaining VMs in IBM Cloud (starting, stopping, cleaning orphans, etc.).
 }
 
 Name:           resalloc-ibm-cloud
-Version:        0.1.0
+Version:        0.99
 Release:        1%{?dist}
 Summary:        Resource allocator scripts for IBM cloud
 
@@ -55,5 +55,8 @@ install  -p -m 644 man/*.1 %buildroot%_mandir/man1
 
 
 %changelog
+* Mon Sep 04 2023 Pavel Raiskup <praiskup@redhat.com> 0.99-1
+- package && release with tito
+
 * Wed Jan 18 2023 Jiri Kyjovsky <j1.kyjovsky@gmail.com>
 - Initial package.
