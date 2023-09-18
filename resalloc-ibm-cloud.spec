@@ -5,10 +5,10 @@ for maintaining VMs in IBM Cloud (starting, stopping, cleaning orphans, etc.).
 
 Name:           resalloc-ibm-cloud
 Version:        0.99
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Resource allocator scripts for IBM cloud
 
-License:        GPLv2+
+License:        GPL-2.0-or-later
 URL:            https://github.com/fedora-copr/%{name}
 Source0:        %{url}/archive/refs/tags/%{name}-%{version}.tar.gz
 
@@ -16,8 +16,6 @@ Source0:        %{url}/archive/refs/tags/%{name}-%{version}.tar.gz
 BuildArch:      noarch
 
 BuildRequires:  python3-devel
-BuildRequires:  python3-ibm-vpc
-BuildRequires:  python3-ibm-cloud-sdk-core
 BuildRequires:  pyproject-rpm-macros
 
 
@@ -55,6 +53,9 @@ install  -p -m 644 man/*.1 %buildroot%_mandir/man1
 
 
 %changelog
+* Mon Sep 18 2023 Jiri Kyjovsky <j1.kyjovsky@gmail.com> 0.99-2
+- use SPDX license and drop buildrequires
+
 * Mon Sep 04 2023 Pavel Raiskup <praiskup@redhat.com> 0.99-1
 - package && release with tito
 
