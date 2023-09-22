@@ -39,9 +39,6 @@ BuildRequires:  pyproject-rpm-macros
 %pyproject_install
 %pyproject_save_files resalloc_ibm_cloud
 
-mkdir -p  %buildroot%_mandir/man1
-install  -p -m 644 man/*.1 %buildroot%_mandir/man1
-
 
 %files -n %{name} -f %{pyproject_files}
 %license LICENSE

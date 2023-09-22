@@ -1,36 +1,37 @@
-[tool.poetry]
+[project]
 name = "resalloc-ibm-cloud"
-version = "0.1.0"
+version = "0.99"
 description = "Resource allocator scripts for IBM cloud"
-authors = ["Copr team <copr-team@redhat.com>"]
-maintainers = ["Copr team <copr-team@redhat.com>"]
-license = "GPLv2"
+authors = [{name = "Copr team", email = "copr-team@redhat.com" }]
+maintainers = [{name = "Copr team", email = "copr-team@redhat.com" }]
+license = {file = "LICENSE"}
 readme = "README.md"
+requires-python = ">=3.6"
+dependencies = [
+    "ibm-vpc>=0.9.0",
+    "ibm-cloud-sdk-core>=3.13.0",
+]
+
+
+[project.urls]
 homepage = "https://github.com/fedora-copr/resalloc-ibm-cloud"
 repository = "https://github.com/fedora-copr/resalloc-ibm-cloud"
 
 
-[tool.poetry.dependencies]
-python = "^3.6"
-ibm-vpc = ">=0.9.0"
-ibm-cloud-sdk-core = ">=3.13.0"
-
-
-[tool.poetry.scripts]
+[project.scripts]
 resalloc-ibm-cloud-list-deleting-vms = "resalloc_ibm_cloud.ibm_cloud_list_deleting_vms:main"
 resalloc-ibm-cloud-list-vms = "resalloc_ibm_cloud.ibm_cloud_list_vms:main"
 resalloc-ibm-cloud-vm = "resalloc_ibm_cloud.ibm_cloud_vm:main"
 
 
 [build-system]
-requires = ["poetry-core", "argparse-manpage[setuptools]"]
-build-backend = "poetry.core.masonry.api"
+requires = ["argparse-manpage[setuptools]>=4.5"]
+build-backend = "setuptools.build_meta"
 
-
-[tool.poetry.build]
-generate-setup-file = true
-script = "build.py"
-
+[tool.setuptools.cmdclass]
+build_py = "build_manpages.build_py"
+install = "build_manpages.install"
+build_manpages = "build_manpages.build_manpages"
 
 [tool.build_manpages]
 manpages = [
