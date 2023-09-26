@@ -4,8 +4,8 @@ for maintaining VMs in IBM Cloud (starting, stopping, cleaning orphans, etc.).
 }
 
 Name:           resalloc-ibm-cloud
-Version:        0.99
-Release:        2%{?dist}
+Version:        1.0
+Release:        1%{?dist}
 Summary:        Resource allocator scripts for IBM cloud
 
 License:        GPL-2.0-or-later
@@ -50,6 +50,10 @@ BuildRequires:  pyproject-rpm-macros
 
 
 %changelog
+* Tue Sep 26 2023 Jiri Kyjovsky 1.0-1
+- Use setuptools instead of poetry
+- spec: use SPDX lincese and drop build requires due to generic reqs
+
 * Mon Sep 18 2023 Jiri Kyjovsky <j1.kyjovsky@gmail.com> 0.99-2
 - use SPDX license and drop buildrequires
 

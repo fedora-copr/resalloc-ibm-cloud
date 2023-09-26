@@ -1,6 +1,6 @@
 [project]
 name = "resalloc-ibm-cloud"
-version = "0.99"
+version = "1.0"
 description = "Resource allocator scripts for IBM cloud"
 authors = [{name = "Copr team", email = "copr-team@redhat.com" }]
 maintainers = [{name = "Copr team", email = "copr-team@redhat.com" }]
