@@ -12,5 +12,5 @@ def get_service(cmd: str, opts: Namespace):
     authenticator = IAMAuthenticator(token)
     now = datetime.datetime.now()
     service = VpcV1(now.strftime("%Y-%m-%d"), authenticator=authenticator)
-    service.set_service_url(opts.service_url)
+    service.set_service_url(f"https://{opts.zone}.iaas.cloud.ibm.com/v1")
     return service

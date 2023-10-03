@@ -65,9 +65,7 @@ def allocate_and_assign_ip(service, opts):
     Allocate and assign a Floating IP to an existing machine in one call.
     """
 
-    service_url = (
-        opts.service_url[:-1] if opts.service_url[-1] == "/" else opts.service_url
-    )
+    service_url = f"https://{opts.zone}.iaas.cloud.ibm.com/v1"
     url = service_url + "/floating_ips"
     headers = {
         "Accept": "application/json",
@@ -164,7 +162,7 @@ def create_instance(service, instance_name, opts):
             ],
         },
         "zone": {
-            "name": opts.zone,
+            "name": urlparse(opts.se),
         },
         "volume_attachments": [
             {
