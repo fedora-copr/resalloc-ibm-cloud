@@ -10,6 +10,8 @@ import os
 import random
 import subprocess
 import sys
+from time import sleep
+
 import requests
 
 from resalloc_ibm_cloud.helpers import get_service
@@ -106,6 +108,26 @@ def run_playbook(host, opts):
     subprocess.check_call(cmd, stdout=sys.stderr)
 
 
+def _get_zone_and_subnet_id(opts):
+    random_subnet = random.choice(opts.subnets_ids)
+    if ":" in random_subnet:
+        return tuple(random_subnet.split(":"))
+    return opts.zone, random_subnet
+
+
+def _get_private_ip_of_instance(instance_id, service):
+    for _ in range(5):
+        private_ip = service.get_instance(
+            instance_id
+        ).get_result()["primary_network_interface"]["primary_ip"]["address"]
+        if private_ip != "0.0.0.0":
+            return private_ip
+
+        sleep(5)
+
+    raise TimeoutError("Instance creation took too much time")
+
+
 def create_instance(service, instance_name, opts):
     """
     Start the VM, name it "instance_name"
@@ -167,7 +189,13 @@ def create_instance(service, instance_name, opts):
         log.debug("Instance response[result]: %s", opts.instance_created)
         instance_id = opts.instance_created["id"]
         log.info("Instance ID: %s", instance_id)
-        ip_address = assign_floating_ip(service, instance_id, opts)
+
+        if opts.no_floating_ip:
+            # assuming you have access through to private IP address
+            ip_address = _get_private_ip_of_instance(instance_id, service)
+        else:
+            ip_address = assign_floating_ip(service, instance_id, opts)
+
         _wait_for_ssh(ip_address)
         run_playbook(ip_address, opts)
         # Tell the Resalloc clients how to connect to this instance.
