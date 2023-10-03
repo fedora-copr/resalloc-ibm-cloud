@@ -3,7 +3,6 @@ Start a new VM in IBM Cloud under the copr-team account.
 """
 
 
-import json
 import logging
 import pipes
 import os
@@ -132,8 +131,7 @@ def create_instance(service, instance_name, opts):
     """
 
     log = opts.log
-    with open(opts.zones, "r", encoding="utf-8") as zone_file:
-        zones = json.load(zone_file)
+    zone, subnet_id = _get_zone_and_subnet_id(opts)
 
     instance_prototype_model = {
         "keys": [{"id": opts.ssh_key_id}],
@@ -155,14 +153,14 @@ def create_instance(service, instance_name, opts):
         "primary_network_interface": {
             "name": "primary-network-interface",
             "subnet": {
-                "id": zones[opts.zone],
+                "id": subnet_id,
             },
             "security_groups": [
                 {"id": opts.security_group_id},
             ],
         },
         "zone": {
-            "name": urlparse(opts.se),
+            "name": zone,
         },
         "volume_attachments": [
             {
@@ -344,10 +342,6 @@ def main():
         opts.instance = "production" if "-prod-" in name else "devel"
 
     if opts.subparser == "create":
-        with open(opts.zones, "r", encoding="utf-8") as zone_file:
-            allowed_zones = list(json.load(zone_file).keys())
-
-        opts.zone = random.choice(allowed_zones)
         # detect_floating_ip_name(opts)
         create_instance(service, name, opts)
     elif opts.subparser == "delete":

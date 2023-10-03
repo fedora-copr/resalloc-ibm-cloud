@@ -4,6 +4,7 @@ ArgumentParser getters on one place, this simplifies generating manual pages.
 
 import argparse
 
+
 def default_arg_parser():
     """
     The part that every resalloc-ibm-cloud utility needs
@@ -45,10 +46,13 @@ def vm_arg_parser():
         "--no-floating-ip", action="store_true", help="Don't use floating IPs (for VPN)"
     )
     parser_create.add_argument(
-        "--zones",
+        "--subnets-ids",
+        type=str,
+        nargs="+",
         help=(
-            "Path to json file with zones as keys and subnet id as value."
-            'content of file will look like: {"jp-tok-1": "secret-subnet-id-123-abcd", ...}'
+            "Space separated list of subnets ids. In case zones are different than a"
+            " basic zone, then specify subnet id with zone colon separated like this:"
+            " zone-1:subnet-id-1 zone-2:subnet-id-2"
         ),
         required=True,
     )
