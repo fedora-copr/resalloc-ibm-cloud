@@ -42,6 +42,9 @@ def vm_arg_parser():
     parser_create.add_argument("--instance-type", help="e.g. cz2-2x4", required=True)
     parser_create.add_argument("--floating-ip-name", default=None)
     parser_create.add_argument(
+        "--no-floating-ip", action="store_true", help="Don't use floating IPs (for VPN)"
+    )
+    parser_create.add_argument(
         "--zones",
         help=(
             "Path to json file with zones as keys and subnet id as value."
