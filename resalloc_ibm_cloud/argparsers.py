@@ -14,8 +14,8 @@ def default_arg_parser():
         "--token-file", help="Path to IBM cloud token file", required=True
     )
     parser.add_argument(
-        "--service-url",
-        help="SERVICE URL e.g. https://jp-tok.iaas.cloud.ibm.com/v1",
+        "--zone",
+        help="default IBM Cloud zone. e.g. jp-tok, us-east, us-west, ...",
         required=True,
     )
     return parser
