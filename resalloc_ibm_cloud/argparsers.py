@@ -5,12 +5,12 @@ ArgumentParser getters on one place, this simplifies generating manual pages.
 import argparse
 
 
-def default_arg_parser():
+def default_arg_parser(prog=None):
     """
     The part that every resalloc-ibm-cloud utility needs
     """
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog=prog)
     parser.add_argument(
         "--token-file", help="Path to IBM cloud token file", required=True
     )
@@ -26,7 +26,7 @@ def vm_arg_parser():
     """
     Parser for the resalloc-ibm-cloud-vm utility.
     """
-    parser = default_arg_parser()
+    parser = default_arg_parser(prog='resalloc-ibm-cloud-vm')
     parser.add_argument("--log-level", default="info")
 
     subparsers = parser.add_subparsers(dest="subparser")
@@ -70,6 +70,6 @@ def vm_list_arg_parser():
     """
     Parser for the resalloc-ibm-cloud-list-vms utility.
     """
-    parser = default_arg_parser()
+    parser = default_arg_parser(prog='resalloc-ibm-cloud-list-vms')
     parser.add_argument("--pool")
     return parser
