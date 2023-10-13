@@ -45,6 +45,7 @@ BuildRequires:  pyproject-rpm-macros
 %doc README.md
 %_mandir/man1/resalloc-ibm-cloud*1*
 %{_bindir}/resalloc-ibm-cloud-list-deleting-vms
+%{_bindir}/resalloc-ibm-cloud-list-deleting-volumes
 %{_bindir}/resalloc-ibm-cloud-list-vms
 %{_bindir}/resalloc-ibm-cloud-vm
 
