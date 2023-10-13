@@ -5,12 +5,16 @@ ArgumentParser getters on one place, this simplifies generating manual pages.
 import argparse
 
 
-def default_arg_parser():
+def _pfx(name):
+    return "resalloc-ibm-cloud-" + name
+
+
+def _default_arg_parser(prog=None):
     """
     The part that every resalloc-ibm-cloud utility needs
     """
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog=prog)
     parser.add_argument(
         "--token-file", help="Path to IBM cloud token file", required=True
     )
@@ -26,7 +30,7 @@ def vm_arg_parser():
     """
     Parser for the resalloc-ibm-cloud-vm utility.
     """
-    parser = default_arg_parser()
+    parser = _default_arg_parser(prog=_pfx("vm"))
     parser.add_argument("--log-level", default="info")
 
     subparsers = parser.add_subparsers(dest="subparser")
@@ -66,10 +70,18 @@ def vm_arg_parser():
     return parser
 
 
-def vm_list_arg_parser():
+def _list_arg_parser(prog=None):
     """
-    Parser for the resalloc-ibm-cloud-list-vms utility.
+    Parser for listing utilities
     """
-    parser = default_arg_parser()
+    parser = _default_arg_parser(prog=prog)
     parser.add_argument("--pool")
     return parser
+
+def list_deleting_vms_parser():
+    """ parser for listing vms """
+    return _list_arg_parser(prog=_pfx("list-deleting-vms"))
+
+def list_vms_parser():
+    """ parser for listing deleting vms """
+    return _list_arg_parser(prog=_pfx("list-vms"))

@@ -6,14 +6,14 @@ import os
 import sys
 
 from resalloc_ibm_cloud.helpers import get_service
-from resalloc_ibm_cloud.argparsers import default_arg_parser
+from resalloc_ibm_cloud.argparsers import list_vms_parser
 from resalloc_ibm_cloud.constants import LIMIT
 
 
 def main():
     """An entrypoint to the script."""
 
-    opts = default_arg_parser().parse_args()
+    opts = list_vms_parser().parse_args()
 
     pool_id = opts.pool or os.getenv("RESALLOC_POOL_ID")
     if not pool_id:
