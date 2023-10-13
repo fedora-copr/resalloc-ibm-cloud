@@ -85,3 +85,7 @@ def list_deleting_vms_parser():
 def list_vms_parser():
     """ parser for listing deleting vms """
     return _list_arg_parser(prog=_pfx("list-vms"))
+
+def list_deleting_volumes_parser():
+    """ parser for listing vms """
+    return _default_arg_parser(prog=_pfx("list-deleting-volumes"))
