@@ -4,7 +4,6 @@ Start a new VM in IBM Cloud under the copr-team account.
 
 
 import logging
-import pipes
 import os
 import random
 import subprocess
