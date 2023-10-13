@@ -333,8 +333,7 @@ def main():
     log = logging.getLogger()
     opts.log = log
 
-    cmd = f"source {pipes.quote(opts.token_file)} ; echo $IBMCLOUD_API_KEY"
-    service = get_service(cmd, opts)
+    service = get_service(opts)
 
     if hasattr(opts, "name"):
         name = resalloc_to_ibmcloud_name(opts.name)

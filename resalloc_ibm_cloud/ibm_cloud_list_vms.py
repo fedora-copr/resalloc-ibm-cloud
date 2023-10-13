@@ -20,8 +20,7 @@ def main():
         sys.stderr.write("Specify pool ID by --pool or $RESALLOC_POOL_ID\n")
         sys.exit(1)
 
-    cmd = f"source {opts.token_file} ; echo $IBMCLOUD_API_KEY"
-    service = get_service(cmd, opts)
+    service = get_service(opts)
 
     # Gather the list of all resources here
     resources = set()
