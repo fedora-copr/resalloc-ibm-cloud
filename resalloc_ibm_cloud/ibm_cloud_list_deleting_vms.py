@@ -11,8 +11,7 @@ def main():
     """Entrypoint to the script."""
 
     opts = list_deleting_vms_parser().parse_args()
-    cmd = f"source {opts.token_file} ; echo $IBMCLOUD_API_KEY"
-    service = get_service(cmd, opts)
+    service = get_service(opts)
 
     instances = service.list_instances(limit=LIMIT).result["instances"]
     for server in instances:

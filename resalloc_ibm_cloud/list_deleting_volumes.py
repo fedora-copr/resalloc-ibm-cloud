@@ -14,10 +14,7 @@ def main():
     """
 
     opts = list_deleting_volumes_parser().parse_args()
-    # TODO: fix get_service
-    cmd = f"source {opts.token_file} ; echo $IBMCLOUD_API_KEY"
-    service = get_service(cmd, opts)
-
+    service = get_service(opts)
     volumes = service.list_volumes(limit=LIMIT).result["volumes"]
     for volume in volumes:
         if volume["status"] in ["available"]:
