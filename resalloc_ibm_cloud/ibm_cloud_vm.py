@@ -124,6 +124,21 @@ def _get_private_ip_of_instance(instance_id, service):
     raise TimeoutError("Instance creation took too much time")
 
 
+def check_field_len(log, config, itemspec, max_length):
+    """
+    Check that CONFIG dict (sub-)item specified by ITEMSPEC (list of hashable
+    objects determining the location in the dict) has length <= MAX_LENGTH.
+    """
+    to_check = config
+    for i in itemspec:
+        to_check = to_check[i]
+    if len(to_check) <= max_length:
+        return
+    log.error("Field %s is longer than %s characters: %s",
+              ".".join(itemspec), max_length, to_check)
+    sys.exit(1)
+
+
 def create_instance(service, instance_name, opts):
     """
     Start the VM, name it "instance_name"
@@ -172,6 +187,13 @@ def create_instance(service, instance_name, opts):
             }
         ],
     }
+
+    for items in [
+        ["name"],
+        ["boot_volume_attachment", "volume", "name"],
+        ["volume_attachments", 0, "volume", "name"],
+    ]:
+        check_field_len(log, instance_prototype_model, items, 63)
 
     ip_address = None
     instance_created = None
