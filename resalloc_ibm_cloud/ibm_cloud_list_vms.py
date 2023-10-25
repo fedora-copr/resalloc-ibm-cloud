@@ -39,6 +39,12 @@ def main():
             name = name.rsplit("_", 1)[0]
             resources.add(name)
 
+    f_ips = service.list_floating_ips().get_result()["floating_ips"]
+    for f_ip in f_ips:
+        name = f_ip["name"].replace("-", "_")
+        if name.startswith(pool_id):
+            resources.add(name)
+
     # Print them out, so upper level tooling can work with the list
     for name in resources:
         # The only stdout output comes here!
