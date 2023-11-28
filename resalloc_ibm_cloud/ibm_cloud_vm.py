@@ -101,7 +101,7 @@ def run_playbook(host, opts):
     Run ansible-playbook against the given hostname
     """
     cmd = ["ansible-playbook", opts.playbook, "--inventory", f"{host},"]
-    subprocess.check_call(cmd, stdout=sys.stderr)
+    subprocess.check_call(cmd, stdout=sys.stderr, stdin=subprocess.DEVNULL)
 
 
 def _get_zone_and_subnet_id(opts):
