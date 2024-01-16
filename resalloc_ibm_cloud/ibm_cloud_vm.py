@@ -277,12 +277,16 @@ def delete_instance_attempt(service, instance_name, opts):
         assert resp.status_code == 204
         log.debug("Delete IP request delivered")
 
-    # Query all volumes only after already potentionaly deleting an instance.
-    # The volumes might have been deleted automatically
+    # Query all volumes only after already potentially deleting an instance.
+    # The volumes should already be deleted automatically.
     volume_ids = []
     volumes = service.list_volumes(limit=LIMIT).result["volumes"]
     for volume in volumes:
         if not volume["name"].startswith(instance_name):
+            continue
+
+        if volume.get('attachment_state') == 'attached':
+            # Error 409 - can't remove attached volumes
             continue
 
         # Otherwise Error: Delete volume failed. Volume can be deleted
@@ -290,10 +294,13 @@ def delete_instance_attempt(service, instance_name, opts):
         if not volume["status"] in ["available", "failed"]:
             continue
 
+        log.info("Volume '%s' (%s) is %s, removing manually", volume["name"],
+                 volume["id"], volume["status"])
         volume_ids.append(volume["id"])
 
     if volume_ids:
         for volume_id in volume_ids:
+            log.info("Deleting volume %s (%s)", volume_id)
             resp = service.delete_volume(volume_id)
             assert resp.status_code == 204
             log.debug("Delete volume request delivered")
