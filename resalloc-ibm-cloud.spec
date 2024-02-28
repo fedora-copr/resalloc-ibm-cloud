@@ -15,6 +15,7 @@ Source0:        %{url}/archive/refs/tags/%{name}-%{version}.tar.gz
 
 BuildArch:      noarch
 
+Requires:       resalloc-helpers
 BuildRequires:  python3-devel
 BuildRequires:  pyproject-rpm-macros
 
