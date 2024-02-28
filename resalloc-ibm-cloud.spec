@@ -4,7 +4,7 @@ for maintaining VMs in IBM Cloud (starting, stopping, cleaning orphans, etc.).
 }
 
 Name:           resalloc-ibm-cloud
-Version:        2.0
+Version:        2.1
 Release:        1%{?dist}
 Summary:        Resource allocator scripts for IBM cloud
 
@@ -52,6 +52,10 @@ BuildRequires:  pyproject-rpm-macros
 
 
 %changelog
+* Wed Feb 28 2024 Pavel Raiskup <praiskup@redhat.com> 2.1-1
+- The wait-for-ssh script was moved to resalloc-helpers
+- releng: release to all active Fedora releases
+
 * Tue Jan 16 2024 Pavel Raiskup <praiskup@redhat.com>
 - don't try to remove attached volumes
 - give the ansible-playbook utility a blocking stdin
