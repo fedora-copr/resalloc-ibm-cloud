@@ -308,7 +308,7 @@ def delete_instance_attempt(service, instance_name, opts):
 
 def _wait_for_ssh(floating_ip):
     cmd = [
-        "resalloc-aws-wait-for-ssh",
+        "resalloc-wait-for-ssh",
         "--log",
         "debug",
         "--timeout",
