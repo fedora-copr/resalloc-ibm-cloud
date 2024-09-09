@@ -60,6 +60,12 @@ def vm_arg_parser():
         ),
         required=True,
     )
+    parser_create.add_argument(
+        "--additional-volume-size",
+        type=int,
+        help="Allocate additional volume of given size in GB",
+        default=160,
+    )
     parser_delete = subparsers.add_parser(
         "delete", help="Delete instance by it's name from IBM Cloud"
     )
