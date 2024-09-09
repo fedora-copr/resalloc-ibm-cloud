@@ -180,7 +180,7 @@ def create_instance(service, instance_name, opts):
             {
                 "volume": {
                     "name": instance_name + "-swap",
-                    "capacity": 168,
+                    "capacity": opts.additional_volume_size,
                     "profile": {"name": "general-purpose"},
                 },
                 "delete_volume_on_instance_delete": True,
