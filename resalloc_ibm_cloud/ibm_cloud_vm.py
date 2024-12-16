@@ -210,6 +210,9 @@ def create_instance(service, instance_name, opts):
         instance_id = opts.instance_created["id"]
         log.info("Instance ID: %s", instance_id)
 
+        if opts.tags:
+            assign_user_tags(opts.instance_created["crn"], service, opts)
+
         if opts.no_floating_ip:
             # assuming you have access through to private IP address
             ip_address = _get_private_ip_of_instance(instance_id, service)
@@ -225,6 +228,25 @@ def create_instance(service, instance_name, opts):
             log.info("Removing the failed machine")
             delete_instance(service, instance_name, opts)
         raise
+
+
+def assign_user_tags(crn, service, opts):
+    """
+    Assign tags to the resource according to the CRN within the region.
+    """
+    service_url = "https://tags.global-search-tagging.cloud.ibm.com/v3"
+    url = service_url + "/tags/attach?tag_type=user"
+    headers = {
+        "Accept": "application/json",
+        "Authorization": f"Bearer {service.authenticator.token_manager.get_token()}",
+        "Content-Type": "application/json",
+    }
+    data = {
+        "resources": [{"resource_id": crn}],
+        "tag_names": list(opts.tags),
+    }
+    response = requests.post(url, headers=headers, json=data)
+    response.raise_for_status()
 
 
 def delete_all_ips(service):

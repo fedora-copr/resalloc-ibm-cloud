@@ -68,6 +68,13 @@ def vm_arg_parser():
     )
     parser_create.add_argument(
         "--resource-group-id", help="Resource group id, get it from `$ ibmcloud resources`"
+    )
+    parser_create.add_argument(
+        "--tags",
+        type=str,
+        nargs="+",
+        help="Space separated list of key:value tags, e.g. app:copr",
+    )
     parser_delete = subparsers.add_parser(
         "delete", help="Delete instance by it's name from IBM Cloud"
     )
