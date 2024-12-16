@@ -188,6 +188,9 @@ def create_instance(service, instance_name, opts):
         ],
     }
 
+    if opts.resource_group_id:
+        instance_prototype_model["resource_group"] = {"id": opts.resource_group_id}
+
     for items in [
         ["name"],
         ["boot_volume_attachment", "volume", "name"],

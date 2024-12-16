@@ -66,6 +66,8 @@ def vm_arg_parser():
         help="Allocate additional volume of given size in GB",
         default=160,
     )
+    parser_create.add_argument(
+        "--resource-group-id", help="Resource group id, get it from `$ ibmcloud resources`"
     parser_delete = subparsers.add_parser(
         "delete", help="Delete instance by it's name from IBM Cloud"
     )
