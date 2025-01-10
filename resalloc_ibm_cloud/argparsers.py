@@ -3,6 +3,12 @@ ArgumentParser getters on one place, this simplifies generating manual pages.
 """
 
 import argparse
+import sys
+
+if 313 > sys.version_info.major * 100 + sys.version_info.minor:
+    DEPRECATED_OPTION = {}
+else:
+    DEPRECATED_OPTION = {"deprecated": True}
 
 
 def _pfx(name):
@@ -21,7 +27,12 @@ def _default_arg_parser(prog=None):
     parser.add_argument(
         "--zone",
         help="default IBM Cloud zone. e.g. jp-tok, us-east, us-west, ...",
-        required=True,
+        dest="region",
+        **DEPRECATED_OPTION,
+    )
+    parser.add_argument(
+        "--region",
+        help="default IBM Cloud zone. e.g. jp-tok, us-east, us-west, ...",
     )
     return parser
 
@@ -45,18 +56,30 @@ def vm_arg_parser():
     parser_create.add_argument("--security-group-id", required=True)
     parser_create.add_argument("--ssh-key-id", required=True)
     parser_create.add_argument("--instance-type", help="e.g. cz2-2x4", required=True)
-    parser_create.add_argument("--floating-ip-name", default=None)
-    parser_create.add_argument(
+
+    f_ip_group = parser_create.add_mutually_exclusive_group()
+
+    f_ip_group.add_argument("--floating-ip-name", default=None)
+    f_ip_group.add_argument("--floating-ip-uuid", default=None)
+    f_ip_group.add_argument(
         "--no-floating-ip", action="store_true", help="Don't use floating IPs (for VPN)"
     )
+    f_ip_group.add_argument("--floating-ip-uuid-in-subnet", nargs=2,
+                            metavar=("SUBNET-ID", "FLOATING-IP-UUID"),
+                            action='append', help=(
+        "Add a Floating IP UUID into the list of IPs that can be used for the "
+        "corresponding subnet ID.  Depending on the $RESALLOC_ID_IN_POOL (given "
+        "by Resalloc server) the script assigns the newly started machine "
+        "n-th IP from the list."
+    ))
     parser_create.add_argument(
         "--subnets-ids",
         type=str,
         nargs="+",
         help=(
-            "Space separated list of subnets ids. In case zones are different than a"
-            " basic zone, then specify subnet id with zone colon separated like this:"
-            " zone-1:subnet-id-1 zone-2:subnet-id-2"
+            "Space separated list of ZONE:SUBNET_ID pairs.  The ZONE "
+            "must be a valid ZONE ID within the specified --region ("
+            "e.g., 'eu-es-2' within 'eu-es' region)."
         ),
         required=True,
     )

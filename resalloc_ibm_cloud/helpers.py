@@ -19,7 +19,7 @@ def get_service(opts: Namespace):
 
     Input options:
         opts.token_file -> file to read and process with shell
-        opts.zone       -> zone in IBM Cloud, e.g. 'jp-tok'
+        opts.region     -> zone in IBM Cloud, e.g. 'jp-tok'
     """
 
     cmd = f"source {opts.token_file} ; echo $IBMCLOUD_API_KEY"
@@ -28,5 +28,5 @@ def get_service(opts: Namespace):
     authenticator = IAMAuthenticator(token)
     now = datetime.datetime.now()
     service = VpcV1(now.strftime("%Y-%m-%d"), authenticator=authenticator)
-    service.set_service_url(f"https://{opts.zone}.iaas.cloud.ibm.com/v1")
+    service.set_service_url(f"https://{opts.region}.iaas.cloud.ibm.com/v1")
     return service
