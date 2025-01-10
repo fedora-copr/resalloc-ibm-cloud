@@ -3,6 +3,7 @@ Start a new VM in IBM Cloud under the copr-team account.
 """
 
 
+import json
 import logging
 import os
 import random
@@ -180,6 +181,10 @@ def create_instance(service, instance_name, opts):
     ip_address = None
     instance_created = None
     opts.allocated_floating_ip_id = None
+
+    log.info("Create instance request:\n%s",
+             json.dumps(instance_prototype_model, indent=4))
+
     try:
         response = service.create_instance(instance_prototype_model)
         instance_created = instance_name
