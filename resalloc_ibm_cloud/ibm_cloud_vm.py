@@ -29,41 +29,30 @@ def bind_floating_ip(service, instance_id, opts):
     """
     Assign an existing Floating IP to given instance.
     """
+    if not opts.floating_ip_uuid:
+        raise RuntimeError("opts.floating_ip_uuid not selected")
 
     log = opts.log
-    log.info("Bind floating IP")
-    response_list = service.list_floating_ips().get_result()["floating_ips"]
-    floating_ip_uuid = None
-    for item in response_list:
-        if item["name"] != opts.floating_ip_name:
-            continue
-        if item["status"] != "available":
-            log.error("Floating IP %s is already used", opts.floating_ip_name)
-            sys.exit(1)
-        floating_ip_uuid = item["id"]
-        floating_ip_address = item["address"]
-
-    if floating_ip_uuid is None:
-        log.error("UUID for Floating IP %s not found", opts.floating_ip_name)
-        sys.exit(1)
+    log.info("Bind floating IP %s", opts.floating_ip_uuid)
 
     network_interface_id = opts.instance_created["primary_network_interface"]["id"]
     log.info("Network interface ID: %s", network_interface_id)
-    service.add_instance_network_interface_floating_ip(
+    result = service.add_instance_network_interface_floating_ip(
         instance_id,
         network_interface_id,
-        floating_ip_uuid,
+        opts.floating_ip_uuid,
     )
-    log.info("Floating IP: %s", floating_ip_address)
-    return floating_ip_address
+    ip_address = result.result["address"]
+    log.info("Floating IP: %s", ip_address)
+    return ip_address
 
 
 def allocate_and_assign_ip(service, opts):
     """
     Allocate and assign a Floating IP to an existing machine in one call.
     """
-
-    service_url = f"https://{opts.zone}.iaas.cloud.ibm.com/v1"
+    opts.log.info("Allocating a new temporary Floating IP")
+    service_url = f"https://{opts.region}.iaas.cloud.ibm.com/v1"
     url = service_url + "/floating_ips"
     headers = {
         "Accept": "application/json",
@@ -85,17 +74,6 @@ def allocate_and_assign_ip(service, opts):
     return response.json()["address"]
 
 
-def assign_floating_ip(service, instance_id, opts):
-    """
-    Assign a Floating IP address (and create it, if needed).
-    """
-
-    if opts.floating_ip_name:
-        return bind_floating_ip(service, instance_id, opts)
-
-    return allocate_and_assign_ip(service, opts)
-
-
 def run_playbook(host, opts):
     """
     Run ansible-playbook against the given hostname
@@ -104,11 +82,13 @@ def run_playbook(host, opts):
     subprocess.check_call(cmd, stdout=sys.stderr, stdin=subprocess.DEVNULL)
 
 
-def _get_zone_and_subnet_id(opts):
+def get_zone_and_subnet_id(opts):
+    """
+    From command-line opts, assign opts.zone and opts.subnet_id.
+    The zone (lab/location) must be a valid choice within --region.
+    """
     random_subnet = random.choice(opts.subnets_ids)
-    if ":" in random_subnet:
-        return tuple(random_subnet.split(":"))
-    return opts.zone, random_subnet
+    opts.zone, opts.subnet_id = random_subnet.split(":")
 
 
 def _get_private_ip_of_instance(instance_id, service):
@@ -145,7 +125,6 @@ def create_instance(service, instance_name, opts):
     """
 
     log = opts.log
-    zone, subnet_id = _get_zone_and_subnet_id(opts)
 
     instance_prototype_model = {
         "keys": [{"id": opts.ssh_key_id}],
@@ -167,14 +146,14 @@ def create_instance(service, instance_name, opts):
         "primary_network_interface": {
             "name": "primary-network-interface",
             "subnet": {
-                "id": subnet_id,
+                "id": opts.subnet_id,
             },
             "security_groups": [
                 {"id": opts.security_group_id},
             ],
         },
         "zone": {
-            "name": zone,
+            "name": opts.zone,
         },
         "volume_attachments": [
             {
@@ -216,8 +195,10 @@ def create_instance(service, instance_name, opts):
         if opts.no_floating_ip:
             # assuming you have access through to private IP address
             ip_address = _get_private_ip_of_instance(instance_id, service)
+        elif opts.floating_ip_uuid:
+            ip_address = bind_floating_ip(service, instance_id, opts)
         else:
-            ip_address = assign_floating_ip(service, instance_id, opts)
+            ip_address = allocate_and_assign_ip(service, opts)
 
         _wait_for_ssh(ip_address)
         run_playbook(ip_address, opts)
@@ -343,44 +324,63 @@ def _wait_for_ssh(floating_ip):
     subprocess.check_call(cmd, stdout=sys.stderr)
 
 
-def detect_floating_ip_name(opts):
+def detect_floating_ip_uuid(service, opts):
     """
-    CURRENTLY UNUSED, the IPs are deallocated
-
-    We allocate Floating IPS in intervals for each instance.
-    Production:
-        - 000-099
-        - currently we allocate at most 8-16 instances
-    Devel
-        - 100-199
-        - currently we allocate 1 to 2 instances
-    Manual starting (not via resalloc) (use --floating-ip-name copr-builder-NNN)
-        - 200-201
-    Since we only allocate at most 16+2+2, we have 20 IPs pre-allocated
-    "forever" in the IBM Cloud API.  If you increase the numbers, go to the web
-    UI and reserve more.
+    Depending on options, decide what floating IP uuid to use.
     """
+    log = opts.log
 
-    # set by command line option?
-    if opts.floating_ip_name:
+    if opts.floating_ip_uuid:
+        # the IP id is known
+        log.info("Using pre-selected Floating IP address %s",
+                 opts.floating_ip_uuid)
         return
 
-    id_in_pool = int(os.environ.get("RESALLOC_ID_IN_POOL", -1))
-    if id_in_pool == -1:
-        opts.log.error("Please specify --floating-ip-name, or RESALLOC_ID_IN_POOL")
-        sys.exit(1)
+    if opts.floating_ip_name:
+        log.info("Mapping Floating IP name to UUID")
+        response_list = service.list_floating_ips().get_result()["floating_ips"]
+        floating_ip_uuid = None
+        for item in response_list:
+            if item["name"] != opts.floating_ip_name:
+                continue
+            if item["status"] != "available":
+                raise RuntimeError(f"Floating IP {opts.floating_ip_name} is used")
+            floating_ip_uuid = item["id"]
 
-    if opts.instance == "devel":
-        id_in_pool += 100
+        if floating_ip_uuid is None:
+            raise RuntimeError(f"UUID for Floating IP {opts.floating_ip_name} "
+                               "not found")
 
-    opts.floating_ip_name = f"copr-builder-{str(id_in_pool).zfill(3)}"
-    opts.log.info(f"Using Floating IP copr-builder-{opts.floating_ip_name}")
+    if opts.floating_ip_per_subnet_map:
+        id_in_pool = int(os.environ.get("RESALLOC_ID_IN_POOL", -1))
+        if id_in_pool == -1:
+            raise RuntimeError("--floating-ip-uuid-in-pool requires "
+                               "$RESALLOC_ID_IN_POOL var in environment")
+
+        opts.floating_ip_uuid = opts.floating_ip_per_subnet_map[opts.subnet_id][id_in_pool]
+        log.info("Selected %s-th Floating IP UUID: %s", id_in_pool,
+                 opts.floating_ip_uuid)
+        return
+
+
+def prepare_opts_floating_ip_uuid_map(opts):
+    """
+    Construct opts.floating_ip_uuid_in_subnet map from
+    opts.floating_ip_uuid_in_subnet.
+    """
+    opts.floating_ip_per_subnet_map = {}
+    if opts.floating_ip_uuid_in_subnet:
+        for subnet_id, ip_id in opts.floating_ip_uuid_in_subnet:
+            if subnet_id not in opts.floating_ip_per_subnet_map:
+                opts.floating_ip_per_subnet_map[subnet_id] = []
+            opts.floating_ip_per_subnet_map[subnet_id].append(ip_id)
 
 
 def main():
     """Entrypoint to the script."""
 
     opts = vm_arg_parser().parse_args()
+
     log_level = getattr(logging, opts.log_level.upper())
     logging.basicConfig(format="%(levelname)s: %(message)s", level=log_level)
     log = logging.getLogger()
@@ -394,7 +394,16 @@ def main():
         opts.instance = "production" if "-prod-" in name else "devel"
 
     if opts.subparser == "create":
-        # detect_floating_ip_name(opts)
+        # Perform these steps *before* starting the machine allocation.  These
+        # methods performs some offline checks and may also query the cloud
+        # (generating additional API traffic).  These checks could result in
+        # various failures, and if that happens, the instance allocation would
+        # have been unnecessary (triggering subsequent deallocation).
+        # construct a subnet_id → list_of_ips map for later convenience
+        prepare_opts_floating_ip_uuid_map(opts)
+        get_zone_and_subnet_id(opts)
+        detect_floating_ip_uuid(service, opts)
+        # High chance the machine will start fine, let's try now.
         create_instance(service, name, opts)
     elif opts.subparser == "delete":
         delete_instance(service, name, opts)
