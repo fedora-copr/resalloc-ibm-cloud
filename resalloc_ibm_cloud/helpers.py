@@ -1,3 +1,4 @@
+import logging
 import subprocess
 import datetime
 from argparse import Namespace
@@ -62,3 +63,18 @@ def run_playbook(host: str, playbook_path: str) -> None:
     """
     cmd = ["ansible-playbook", playbook_path, "--inventory", f"{host},"]
     subprocess.check_call(cmd, stdout=sys.stderr, stdin=subprocess.DEVNULL)
+
+
+def setup_logging(log_level="info"):
+    """
+    Logging configuration for all resalloc-ibm-cloud scripts.
+
+    Args:
+        log_level: Logging level as string (default: "info")
+    """
+    root_logger = logging.getLogger(__name__)
+    root_logger.handlers.clear()
+
+    logging.basicConfig(level=log_level.upper(), datefmt="[%H:%M:%S]")
+
+    root_logger.debug(f"Log level set to {log_level}")
