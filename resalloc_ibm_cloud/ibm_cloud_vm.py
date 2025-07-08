@@ -13,7 +13,7 @@ from time import sleep
 
 import requests
 
-from resalloc_ibm_cloud.helpers import get_service
+from resalloc_ibm_cloud.helpers import get_service, wait_for_ssh, run_playbook
 from resalloc_ibm_cloud.argparsers import vm_arg_parser
 from resalloc_ibm_cloud.constants import LIMIT
 
@@ -73,14 +73,6 @@ def allocate_and_assign_ip(service, opts):
     assert response.status_code == 201
     opts.allocated_floating_ip_id = response.json()["id"]
     return response.json()["address"]
-
-
-def run_playbook(host, opts):
-    """
-    Run ansible-playbook against the given hostname
-    """
-    cmd = ["ansible-playbook", opts.playbook, "--inventory", f"{host},"]
-    subprocess.check_call(cmd, stdout=sys.stderr, stdin=subprocess.DEVNULL)
 
 
 def get_zone_and_subnet_id(opts):
@@ -205,8 +197,8 @@ def create_instance(service, instance_name, opts):
         else:
             ip_address = allocate_and_assign_ip(service, opts)
 
-        _wait_for_ssh(ip_address)
-        run_playbook(ip_address, opts)
+        wait_for_ssh(ip_address)
+        run_playbook(ip_address, opts.playbook)
         # Tell the Resalloc clients how to connect to this instance.
         print(ip_address)
     except:
@@ -315,18 +307,6 @@ def delete_instance_attempt(service, instance_name, opts):
             resp = service.delete_volume(volume_id)
             assert resp.status_code == 204
             log.debug("Delete volume request delivered")
-
-
-def _wait_for_ssh(floating_ip):
-    cmd = [
-        "resalloc-wait-for-ssh",
-        "--log",
-        "debug",
-        "--timeout",
-        "240",
-        floating_ip,
-    ]
-    subprocess.check_call(cmd, stdout=sys.stderr)
 
 
 def detect_floating_ip_uuid(service, opts):
