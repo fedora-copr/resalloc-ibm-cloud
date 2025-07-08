@@ -7,15 +7,17 @@ import json
 import logging
 import os
 import random
-import subprocess
 import sys
 from time import sleep
 
 import requests
 
-from resalloc_ibm_cloud.helpers import get_service, wait_for_ssh, run_playbook
+from resalloc_ibm_cloud.helpers import get_service, setup_logging, wait_for_ssh, run_playbook
 from resalloc_ibm_cloud.argparsers import vm_arg_parser
 from resalloc_ibm_cloud.constants import LIMIT
+
+
+log = logging.getLogger(__name__)
 
 
 def resalloc_to_ibmcloud_name(name):
@@ -33,7 +35,6 @@ def bind_floating_ip(service, instance_id, opts):
     if not opts.floating_ip_uuid:
         raise RuntimeError("opts.floating_ip_uuid not selected")
 
-    log = opts.log
     log.info("Bind floating IP %s", opts.floating_ip_uuid)
 
     network_interface_id = opts.instance_created["primary_network_interface"]["id"]
@@ -52,7 +53,7 @@ def allocate_and_assign_ip(service, opts):
     """
     Allocate and assign a Floating IP to an existing machine in one call.
     """
-    opts.log.info("Allocating a new temporary Floating IP")
+    log.info("Allocating a new temporary Floating IP")
     service_url = f"https://{opts.region}.iaas.cloud.ibm.com/v1"
     url = service_url + "/floating_ips"
     headers = {
@@ -97,7 +98,7 @@ def _get_private_ip_of_instance(instance_id, service):
     raise TimeoutError("Instance creation took too much time")
 
 
-def check_field_len(log, config, itemspec, max_length):
+def check_field_len(config, itemspec, max_length):
     """
     Check that CONFIG dict (sub-)item specified by ITEMSPEC (list of hashable
     objects determining the location in the dict) has length <= MAX_LENGTH.
@@ -116,8 +117,6 @@ def create_instance(service, instance_name, opts):
     """
     Start the VM, name it "instance_name"
     """
-
-    log = opts.log
 
     instance_prototype_model = {
         "keys": [{"id": opts.ssh_key_id}],
@@ -168,7 +167,7 @@ def create_instance(service, instance_name, opts):
         ["boot_volume_attachment", "volume", "name"],
         ["volume_attachments", 0, "volume", "name"],
     ]:
-        check_field_len(log, instance_prototype_model, items, 63)
+        check_field_len(instance_prototype_model, items, 63)
 
     ip_address = None
     instance_created = None
@@ -249,12 +248,11 @@ def delete_instance(service, instance_name, opts):
             delete_instance_attempt(service, instance_name, opts)
             break
         except RuntimeError:
-            opts.log.exception("Attempt to delete instance failed")
+            log.exception("Attempt to delete instance failed")
 
 
 def delete_instance_attempt(service, instance_name, opts):
     """one attempt to delete instance by it's name"""
-    log = opts.log
     log.info("Deleting instance %s", instance_name)
 
     delete_instance_id = None
@@ -298,12 +296,12 @@ def delete_instance_attempt(service, instance_name, opts):
             continue
 
         log.info("Volume '%s' (%s) is %s, removing manually", volume["name"],
-                 volume["id"], volume["status"])
+                    volume["id"], volume["status"])
         volume_ids.append(volume["id"])
 
     if volume_ids:
         for volume_id in volume_ids:
-            log.info("Deleting volume %s (%s)", volume_id)
+            log.info("Deleting volume %s", volume_id)
             resp = service.delete_volume(volume_id)
             assert resp.status_code == 204
             log.debug("Delete volume request delivered")
@@ -311,10 +309,8 @@ def delete_instance_attempt(service, instance_name, opts):
 
 def detect_floating_ip_uuid(service, opts):
     """
-    Depending on options, decide what floating IP uuid to use.
+    Depending on options, decide what floating IP uuid to use logger.
     """
-    log = opts.log
-
     if opts.floating_ip_uuid:
         # the IP id is known
         log.info("Using pre-selected Floating IP address %s",
@@ -366,10 +362,7 @@ def main():
 
     opts = vm_arg_parser().parse_args()
 
-    log_level = getattr(logging, opts.log_level.upper())
-    logging.basicConfig(format="%(levelname)s: %(message)s", level=log_level)
-    log = logging.getLogger()
-    opts.log = log
+    setup_logging(opts.log_level)
 
     service = get_service(opts)
 
