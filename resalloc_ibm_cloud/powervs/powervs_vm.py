@@ -1,0 +1,270 @@
+"""
+Start a new VM in IBM Cloud Power Virtual Server.
+"""
+
+import logging
+import sys
+import time
+from time import sleep
+from typing import Any, Optional
+
+import backoff
+from requests import HTTPError
+import requests
+
+from resalloc_ibm_cloud.argparsers import powervs_arg_parser
+from resalloc_ibm_cloud.helpers import run_playbook, setup_logging, wait_for_ssh
+from resalloc_ibm_cloud.powervs.credentials import get_powervs_credentials
+from resalloc_ibm_cloud.powervs.client import PowerVSClient
+
+
+logger = logging.getLogger(__name__)
+
+
+class PowerVSVMManager:
+    def __init__(self, client: PowerVSClient) -> None:
+        self.client = client
+
+    @staticmethod
+    def _build_instance_base_body(name: str, options: Any) -> dict:
+        instance_body = {
+            "serverName": name,
+            "imageID": options.image_uuid,
+            "processors": options.processors,
+            "procType": options.processor_type,
+            "memory": options.ram,
+            "networks": [
+                {"networkID": network_id}
+                for network_id in options.network_id
+                if network_id and network_id.strip()
+            ],
+            "sysType": options.system_type,
+            "keyPairName": options.ssh_key_name,
+        }
+
+        # optional parameters
+        if getattr(options, "tags", None) is not None:
+            instance_body["userTags"] = list(options.tags)
+
+        if getattr(options, "pinPolicy", None) is not None:
+            instance_body["pinPolicy"] = options.pin_policy
+
+        if getattr(options, "storage_type", None) is not None:
+            instance_body["storageType"] = options.storage_type
+
+        return instance_body
+
+    def _create_and_attach_volumes_to_vm(
+        self, vm_id: str, volumes: list[dict], tags: Optional[list[str]]
+    ) -> None:
+        if not volumes:
+            return
+
+        if tags:
+            for volume in volumes:
+                volume["userTags"] = tags
+
+        for volume in volumes:
+            resp = self.client.create_volume(volume)
+            volume_id = resp.get("volumeID")
+            logger.debug("Created volume %s with ID %s", volume["name"], volume_id)
+
+            self.client.attach_volume(
+                vm_id,
+                volume_id,
+            )
+
+    def _create_instance(self, instance_body: dict) -> dict:
+        instance = self.client.create_instance(instance_body)
+        # they say it's dict in the docs, but it's actually a list of one element lol xd
+        instance_id = instance[0]["pvmInstanceID"]
+        logger.info("PowerVS instance creation initiated. Instance ID: %s", instance_id)
+
+        # wait for the instance to be active, in powervs this may be even 5 or 10 minutes
+        # before the instance is even _listed_ in the cloud as ready. After that part, the
+        # subnet will be attached and the IP address will be available.
+        return self._wait_for_instance_active(instance_id)
+
+    def _extract_ip_address(self, instance: dict) -> str:
+        networks = instance.get("networks", [])
+        if not networks:
+            raise RuntimeError("Instance does not have any networks attached")
+
+        ip_address = networks[0].get("ip")
+        if not ip_address:
+            raise RuntimeError("No IP address found for the instance")
+
+        logger.info("Instance IP address: %s", ip_address)
+        return ip_address
+
+    def create_vm(self, name: str, options: Any) -> str:
+        """
+        Create a new VM instance in PowerVS
+
+        Args:
+            name: Instance name
+            options: Options with VM configuration
+
+        Returns:
+            IP address of the created instance
+        """
+        instance_body = self._build_instance_base_body(name, options)
+
+        instance = self._create_instance(instance_body)
+
+        volumes = self._parse_volumes(getattr(options, "volumes", []))
+        self._create_and_attach_volumes_to_vm(
+            instance["pvmInstanceID"], volumes, getattr(options, "tags", None)
+        )
+
+        ip_address = self._extract_ip_address(instance)
+        wait_for_ssh(ip_address)
+
+        run_playbook(host=ip_address, playbook_path=options.playbook)
+
+        return ip_address
+
+    # this is just a simple retry wrapper, because IBM Cloud freaks out for a while
+    # once the volume is deleted, returning random errors when trying to delete it...
+    # it should work after a few retries (up to 30 seconds)
+    @backoff.on_exception(
+        backoff.constant,
+        requests.RequestException,
+        max_time=120,
+        interval=10,
+    )
+    def _delete_volume_with_backoff(self, volume_id: str) -> None:
+        self.client.delete_volume(volume_id)
+        logger.info("Deleted volume with ID %s", volume_id)
+
+    def delete_vm(self, name: str) -> None:
+        """
+        Delete a VM instance by name
+
+        Args:
+            name: Instance name
+        """
+        logger.info("Deleting PowerVS instance %s", name)
+
+        instances = self.client.list_instances()
+        instance_id = None
+
+        for instance in instances:
+            if instance["serverName"] == name:
+                instance_id = instance["pvmInstanceID"]
+                break
+
+        if not instance_id:
+            logger.warning("No instance found with name %s", name)
+            return
+        
+        instance_information = self.client.get_instance(instance_id)
+        volume_ids = instance_information.get("volumeIDs", [])
+
+        # the data volumes tends to remain undeleted even if the delete_instance
+        # call is with delete_data_volumes, so this needs to be assured manually
+        for volume_id in volume_ids:
+            try:
+                self.client.detach_volume(instance_id, volume_id)
+                logger.info("Detached volume with ID %s from instance %s", volume_id, instance_id)
+                self._delete_volume_with_backoff(volume_id)
+            except HTTPError as e:
+                logger.error("Failed to delete volume %s: %s", volume_id, str(e))
+
+        self.client.delete_instance(
+            instance_id,
+            delete_data_volumes=True,
+        )
+        logger.info(
+            "PowerVS instance %s (ID: %s) deletion initiated",
+            name,
+            instance_id,
+        )
+
+    def _parse_volumes(self, volumes_list: list[str]) -> list[dict]:
+        """
+        Parse volume specifications from a list of strings.
+
+        Each string should be in the format "name:size[:diskType]".
+        """
+        result = []
+        for vol_spec in volumes_list:
+            parts = vol_spec.split(":")
+            if len(parts) < 2:
+                logger.warning("Invalid volume specification: %s", vol_spec)
+                continue
+
+            volume = {
+                "name": parts[0],
+                "size": float(parts[1]),
+            }
+
+            if len(parts) > 2:
+                volume["diskType"] = parts[2]
+
+            result.append(volume)
+
+        return result
+
+    def _wait_for_instance_active(
+        self, instance_id: str, timeout: int = 1200, interval: int = 10
+    ) -> dict:
+        start_time = time.time()
+        while True:
+            if time.time() - start_time > timeout:
+                raise TimeoutError(
+                    f"Instance did not become active within {timeout} seconds"
+                )
+
+            instance = self.client.get_instance(instance_id)
+            status = instance.get("status")
+
+            logger.info("Instance status: %s", status)
+
+            if status == "ACTIVE" and self._wait_for_health(instance):
+                logger.info("Instance is active and healthy")
+                return instance
+            elif status in ["ERROR", "FAILED"]:
+                raise RuntimeError(f"Instance creation failed with status: {status}")
+
+            sleep(interval)
+
+    # Wait for the instance to be healthy and ready... even after it is active, the ssh often
+    # does not work immediately for some reason. In my experience, it takes about 10 minutes.
+    @staticmethod
+    def _wait_for_health(instance: dict) -> bool:
+        health_status = instance.get("health", {}).get("status")
+        logger.debug("Waiting for instance health status: %s", health_status)
+        return health_status == "OK"
+
+
+def main() -> int:
+    """
+    Main entry point for PowerVS VM management.
+
+    Returns:
+        Exit code
+    """
+    opts = powervs_arg_parser().parse_args()
+
+    setup_logging(opts.log_level)
+
+    try:
+        credentials = get_powervs_credentials(opts.token_file, opts.crn)
+        client = PowerVSClient(credentials)
+        vm_manager = PowerVSVMManager(client)
+
+        if opts.subparser == "create":
+            ip_address = vm_manager.create_vm(opts.name, opts)
+            print(ip_address)
+        elif opts.subparser == "delete":
+            vm_manager.delete_vm(opts.name)
+        else:
+            logger.error("Unknown subcommand: %s", opts.subparser)
+            sys.exit(1)
+
+        sys.exit(0)
+
+    except Exception as e:
+        logger.exception("Error in PowerVS VM management: %s", str(e))
+        sys.exit(1)
