@@ -45,11 +45,6 @@ def _default_arg_parser_vpc(prog=None):
 def _default_arg_parser_powervs(prog=None):
     parser = _default_arg_parser(prog=prog)
     parser.add_argument(
-        "--cloud-instance-id",
-        help="ID of the PowerVS cloud instance to use",
-        required=True,
-    )
-    parser.add_argument(
         "--crn",
         help="CRN of the PowerVS instance, used to get credentials",
         required=True,
