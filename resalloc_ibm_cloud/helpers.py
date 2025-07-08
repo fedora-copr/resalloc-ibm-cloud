@@ -1,6 +1,7 @@
 import subprocess
 import datetime
 from argparse import Namespace
+import sys
 
 from ibm_vpc import VpcV1
 from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
@@ -30,3 +31,34 @@ def get_service(opts: Namespace):
     service = VpcV1(now.strftime("%Y-%m-%d"), authenticator=authenticator)
     service.set_service_url(f"https://{opts.region}.iaas.cloud.ibm.com/v1")
     return service
+
+
+def wait_for_ssh(floating_ip, timeout=240):
+    """
+    Wait for SSH to be available on the given floating IP address.
+    
+    Args:
+        floating_ip: The floating IP address to check
+        timeout: Maximum time to wait in seconds (default is 240)
+    """
+    cmd = [
+        "resalloc-wait-for-ssh",
+        "--log",
+        "debug",
+        "--timeout",
+        str(timeout),
+        floating_ip,
+    ]
+    subprocess.check_call(cmd, stdout=sys.stderr)
+
+
+def run_playbook(host: str, playbook_path: str) -> None:
+    """
+    Run ansible-playbook against the given hostname
+    
+    Args:
+        host: IP address or hostname of the instance
+        playbook_path: Path to the Ansible playbook
+    """
+    cmd = ["ansible-playbook", playbook_path, "--inventory", f"{host},"]
+    subprocess.check_call(cmd, stdout=sys.stderr, stdin=subprocess.DEVNULL)
