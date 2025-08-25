@@ -3,6 +3,7 @@ Start a new VM in IBM Cloud Power Virtual Server.
 """
 
 import logging
+import subprocess
 import sys
 import time
 from time import sleep
@@ -13,6 +14,7 @@ from requests import HTTPError
 import requests
 
 from resalloc_ibm_cloud.argparsers import powervs_arg_parser
+from resalloc_ibm_cloud.exceptions import PowerVSNotFoundException
 from resalloc_ibm_cloud.helpers import run_playbook, setup_logging, wait_for_ssh
 from resalloc_ibm_cloud.powervs.credentials import get_powervs_credentials
 from resalloc_ibm_cloud.powervs.client import PowerVSClient
@@ -74,7 +76,7 @@ class PowerVSVMManager:
                 volume_id,
             )
 
-    def _create_instance(self, instance_body: dict) -> dict:
+    def _create_instance(self, instance_body: dict, no_rmc: bool) -> dict:
         instance = self.client.create_instance(instance_body)
         # they say it's dict in the docs, but it's actually a list of one element lol xd
         instance_id = instance[0]["pvmInstanceID"]
@@ -83,16 +85,17 @@ class PowerVSVMManager:
         # wait for the instance to be active, in powervs this may be even 5 or 10 minutes
         # before the instance is even _listed_ in the cloud as ready. After that part, the
         # subnet will be attached and the IP address will be available.
-        return self._wait_for_instance_active(instance_id)
+        return self._wait_for_instance_active(instance_id=instance_id, no_rmc=no_rmc)
 
-    def _extract_ip_address(self, instance: dict) -> str:
+    @staticmethod
+    def _extract_ip_address(instance: dict) -> str:
         networks = instance.get("networks", [])
         if not networks:
-            raise RuntimeError("Instance does not have any networks attached")
+            raise PowerVSNotFoundException("Instance does not have any networks attached")
 
         ip_address = networks[0].get("ip")
         if not ip_address:
-            raise RuntimeError("No IP address found for the instance")
+            raise PowerVSNotFoundException("No IP address found for the instance")
 
         logger.info("Instance IP address: %s", ip_address)
         return ip_address
@@ -110,7 +113,7 @@ class PowerVSVMManager:
         """
         instance_body = self._build_instance_base_body(name, options)
 
-        instance = self._create_instance(instance_body)
+        instance = self._create_instance(instance_body, options.no_rmc)
 
         volumes = self._parse_volumes(getattr(options, "volumes", []))
         self._create_and_attach_volumes_to_vm(
@@ -207,7 +210,7 @@ class PowerVSVMManager:
         return result
 
     def _wait_for_instance_active(
-        self, instance_id: str, timeout: int = 1200, interval: int = 10
+        self, instance_id: str, no_rmc: bool, timeout: int = 1200, interval: int = 10,
     ) -> dict:
         start_time = time.time()
         while True:
@@ -221,7 +224,7 @@ class PowerVSVMManager:
 
             logger.info("Instance status: %s", status)
 
-            if status == "ACTIVE" and self._wait_for_health(instance):
+            if status == "ACTIVE" and self._wait_for_health_or_ssh(instance, no_rmc, timeout):
                 logger.info("Instance is active and healthy")
                 return instance
             elif status in ["ERROR", "FAILED"]:
@@ -231,8 +234,23 @@ class PowerVSVMManager:
 
     # Wait for the instance to be healthy and ready... even after it is active, the ssh often
     # does not work immediately for some reason. In my experience, it takes about 10 minutes.
-    @staticmethod
-    def _wait_for_health(instance: dict) -> bool:
+    # But sometimes this will hang forever if the instance network is configured
+    # via some hacks that break RMC
+    # https://www.ibm.com/docs/en/powervc/2.0.3?topic=solutions-newly-deployed-virtual-machine-status-shows-warning
+    @classmethod
+    def _wait_for_health_or_ssh(cls, instance: dict, no_rmc: bool, timeout: int) -> bool:
+        if no_rmc:
+            # check at least if we can ssh
+            try:
+                ip_address = cls._extract_ip_address(instance)
+                wait_for_ssh(ip_address, timeout)
+                return True
+            except PowerVSNotFoundException:
+                logger.warning("IP address not found (yet?) for instance %s", instance.get("id"))
+                return False
+            except subprocess.CalledProcessError as e:
+                raise TimeoutError("SSH did not become available in time") from e
+
         health_status = instance.get("health", {}).get("status")
         logger.debug("Waiting for instance health status: %s", health_status)
         return health_status == "OK"
@@ -255,8 +273,16 @@ def main() -> int:
         vm_manager = PowerVSVMManager(client)
 
         if opts.subparser == "create":
-            ip_address = vm_manager.create_vm(opts.name, opts)
-            print(ip_address)
+            try:
+                ip_address = vm_manager.create_vm(opts.name, opts)
+                print(ip_address)
+            except Exception as e:
+                logger.error(
+                    "Failed to create VM: %s; trying to remove allocated resources...",
+                    str(e)
+                )
+                vm_manager.delete_vm(opts.name)
+                raise
         elif opts.subparser == "delete":
             vm_manager.delete_vm(opts.name)
         else:

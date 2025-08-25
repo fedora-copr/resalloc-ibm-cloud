@@ -209,7 +209,12 @@ def powervs_arg_parser():
         help="Machine type (s922, e980)",
         default="s922",
     )
-    
+    parser_create.add_argument(
+        "--no-rmc",
+        action="store_true",
+        help="Do not wait for Resource Monitoring and Control to be ready"
+    )
+
     parser_delete = subparsers.add_parser(
         "delete", help="Delete PowerVS instance by its name from IBM Cloud"
     )
