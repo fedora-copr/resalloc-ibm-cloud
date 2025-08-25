@@ -56,25 +56,24 @@ class PowerVSVMManager:
 
         return instance_body
 
-    def _create_and_attach_volumes_to_vm(
+    def _create_volumes_with_tags(
         self, vm_id: str, volumes: list[dict], tags: Optional[list[str]]
-    ) -> None:
+    ) -> list[str]:
         if not volumes:
-            return
+            return []
 
         if tags:
             for volume in volumes:
                 volume["userTags"] = tags
 
+        ids = []
         for volume in volumes:
             resp = self.client.create_volume(volume)
             volume_id = resp.get("volumeID")
             logger.debug("Created volume %s with ID %s", volume["name"], volume_id)
+            ids.append(volume_id)
 
-            self.client.attach_volume(
-                vm_id,
-                volume_id,
-            )
+        return ids
 
     def _create_instance(self, instance_body: dict, no_rmc: bool) -> dict:
         instance = self.client.create_instance(instance_body)
@@ -113,12 +112,14 @@ class PowerVSVMManager:
         """
         instance_body = self._build_instance_base_body(name, options)
 
-        instance = self._create_instance(instance_body, options.no_rmc)
-
         volumes = self._parse_volumes(getattr(options, "volumes", []))
-        self._create_and_attach_volumes_to_vm(
+        volume_ids = self._create_volumes_with_tags(
             instance["pvmInstanceID"], volumes, getattr(options, "tags", None)
         )
+
+        instance_body["volumeIDs"] = volume_ids
+
+        instance = self._create_instance(instance_body, options.no_rmc)
 
         ip_address = self._extract_ip_address(instance)
         wait_for_ssh(ip_address)
