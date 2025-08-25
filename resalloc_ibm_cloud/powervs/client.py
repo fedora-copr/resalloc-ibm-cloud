@@ -201,26 +201,6 @@ class PowerVSClient:
             json_data=volume_data,
         )
 
-    def attach_volume(
-        self,
-        instance_id: str,
-        volume_id: str,
-    ) -> dict:
-        """
-        Attach a volume to an existing PowerVS instance
-
-        Args:
-            instance_id: Instance ID
-            volume_id: Volume ID to attach
-
-        Returns:
-            Attached volume details
-        """
-        return self.request(
-            "POST",
-            f"/pvm-instances/{instance_id}/volumes/{volume_id}",
-        )
-
     def update_volume(
         self,
         volume_id: str,
