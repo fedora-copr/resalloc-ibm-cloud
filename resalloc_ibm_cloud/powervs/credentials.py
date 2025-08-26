@@ -5,8 +5,6 @@ PowerVS credentials management.
 import subprocess
 from dataclasses import dataclass
 
-from functools import cached_property
-
 from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
 
 
