@@ -4,7 +4,7 @@ for maintaining VMs in IBM Cloud (starting, stopping, cleaning orphans, etc.).
 }
 
 Name:           resalloc-ibm-cloud
-Version:        3.0
+Version:        3.1
 Release:        1%{?dist}
 Summary:        Resource allocator scripts for IBM cloud
 
@@ -55,6 +55,9 @@ BuildRequires:  pyproject-rpm-macros
 
 
 %changelog
+* Tue Aug 26 2025 Jiri Kyjovsky <j1.kyjovsky@gmail.com> 3.1-1
+- Add support for IBM Cloud Power Virtual Server
+
 * Sat Jan 11 2025 Pavel Raiskup <praiskup@redhat.com> 3.0-1
 - Log the instance create request content
 - Allow specifying a list of Floating IPs
