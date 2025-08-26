@@ -117,7 +117,18 @@ class PowerVSVMManager:
 
         instance_body["volumeIDs"] = volume_ids
 
-        instance = self._create_instance(instance_body, options.no_rmc)
+        try:
+            instance = self._create_instance(instance_body, options.no_rmc)
+        except Exception:
+            logger.error("Instance creation failed, cleaning up allocated volumes...")
+            sleep(20)  # give IBM Cloud a while to process the volumes
+            for volume_id in volume_ids:
+                try:
+                    self._delete_volume_with_backoff(volume_id)
+                    logger.info("Cleaned up orphaned volume with ID %s", volume_id)
+                except Exception as e:
+                    logger.error("Failed to clean up volume %s: %s", volume_id, str(e))
+            raise
 
         ip_address = self._extract_ip_address(instance)
         wait_for_ssh(ip_address)
@@ -277,10 +288,12 @@ def main() -> int:
                 ip_address = vm_manager.create_vm(opts.name, opts)
                 print(ip_address)
             except Exception as e:
+                # this mainly handles the post VM creation cleanup
                 logger.error(
                     "Failed to create VM: %s; trying to remove allocated resources...",
                     str(e)
                 )
+                sleep(20)  # give IBM Cloud a while
                 vm_manager.delete_vm(opts.name)
                 raise
         elif opts.subparser == "delete":
