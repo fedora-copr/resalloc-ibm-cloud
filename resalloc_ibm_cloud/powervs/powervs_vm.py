@@ -15,7 +15,7 @@ import requests
 
 from resalloc_ibm_cloud.argparsers import powervs_arg_parser
 from resalloc_ibm_cloud.exceptions import PowerVSNotFoundException
-from resalloc_ibm_cloud.helpers import run_playbook, setup_logging, wait_for_ssh
+from resalloc_ibm_cloud.helpers import powervs_name, run_playbook, setup_logging, wait_for_ssh
 from resalloc_ibm_cloud.powervs.credentials import get_powervs_credentials
 from resalloc_ibm_cloud.powervs.client import PowerVSClient
 
@@ -57,8 +57,8 @@ class PowerVSVMManager:
         return instance_body
 
     def _create_volumes_with_tags(
-        self, vm_id: str, volumes: list[dict], tags: Optional[list[str]]
-    ) -> list[str]:
+            self, volumes: list[dict], tags: Optional[list[str]]
+        ) -> list[str]:
         if not volumes:
             return []
 
@@ -113,9 +113,7 @@ class PowerVSVMManager:
         instance_body = self._build_instance_base_body(name, options)
 
         volumes = self._parse_volumes(getattr(options, "volumes", []))
-        volume_ids = self._create_volumes_with_tags(
-            instance["pvmInstanceID"], volumes, getattr(options, "tags", None)
-        )
+        volume_ids = self._create_volumes_with_tags(volumes, getattr(options, "tags", None))
 
         instance_body["volumeIDs"] = volume_ids
 
@@ -265,6 +263,7 @@ def main() -> int:
         Exit code
     """
     opts = powervs_arg_parser().parse_args()
+    opts.name = powervs_name(opts.name)
 
     setup_logging(opts.log_level)
 
