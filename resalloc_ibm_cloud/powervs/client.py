@@ -110,7 +110,7 @@ class PowerVSClient:
 
         try:
             response.raise_for_status()
-        except requests.HTTPError as e:
+        except requests.HTTPError:
             logger.error("API request failed: %s %s - %s", method, url, response.text)
             raise
 

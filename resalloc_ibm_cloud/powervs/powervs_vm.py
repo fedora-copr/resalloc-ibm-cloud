@@ -58,7 +58,7 @@ class PowerVSVMManager:
 
     def _create_volumes_with_tags(
             self, volumes: list[dict], tags: Optional[list[str]]
-        ) -> list[str]:
+    ) -> list[str]:
         if not volumes:
             return []
 
@@ -170,7 +170,7 @@ class PowerVSVMManager:
         if not instance_id:
             logger.warning("No instance found with name %s", name)
             return
-        
+
         instance_information = self.client.get_instance(instance_id)
         volume_ids = instance_information.get("volumeIDs", [])
 
