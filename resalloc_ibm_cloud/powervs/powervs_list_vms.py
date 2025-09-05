@@ -43,7 +43,7 @@ def list_volumes_associated_vms(client: PowerVSClient, pool_id: str) -> set[str]
     """
     vms = set()
     for volume in client.list_volumes():
-        volume_name = volume["volumeID"]
+        volume_name = volume["name"]
         if volume_name.startswith(pool_id):
             # the dropped suffix is underscore something (_volume)
             vms.add(volume_name.rsplit("_volume", 1)[0])

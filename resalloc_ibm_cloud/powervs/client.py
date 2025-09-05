@@ -263,4 +263,4 @@ class PowerVSClient:
         Returns:
             List of volumes
         """
-        return self.request("GET", "/volumes")
+        return self.request("GET", "/volumes").get("volumes", [])
