@@ -150,6 +150,16 @@ class PowerVSVMManager:
         self.client.delete_volume(volume_id)
         logger.info("Deleted volume with ID %s", volume_id)
 
+    def _force_delete_volume_by_instance_name(self, instance_name: str) -> None:
+        # if powervs decides to fail and keep the volume around, force delete any
+        # volume that starts with the instance name
+        # this is basically the last resort of defence from flaky PowerVS to
+        # give us presents in the form of dangling volumes
+        volumes = self.client.list_volumes()
+        for volume in volumes:
+            if volume["name"].startswith(instance_name):
+                self._delete_volume_with_backoff(volume["volumeID"])
+
     def delete_vm(self, name: str) -> None:
         """
         Delete a VM instance by name
@@ -169,6 +179,8 @@ class PowerVSVMManager:
 
         if not instance_id:
             logger.warning("No instance found with name %s", name)
+            logger.info("Attempting to delete any dangling volumes with the same name prefix")
+            self._force_delete_volume_by_instance_name(name)
             return
 
         instance_information = self.client.get_instance(instance_id)
