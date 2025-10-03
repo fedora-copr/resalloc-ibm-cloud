@@ -113,9 +113,21 @@ class PowerVSVMManager:
         instance_body = self._build_instance_base_body(name, options)
 
         volumes = self._parse_volumes(getattr(options, "volumes", []))
+
+        if options.storage_pool:
+            for volume in volumes:
+                volume["volumePool"] = options.storage_pool
+        else:
+            raise ValueError(
+                "Storage pool must be specified with --storage-pool for volumes, otherwise " \
+                "the VM and volumes may end up in different pools causing errors."
+            )
+
         volume_ids = self._create_volumes_with_tags(volumes, getattr(options, "tags", None))
 
         instance_body["volumeIDs"] = volume_ids
+        if options.storage_pool:
+            instance_body["storagePool"] = options.storage_pool
 
         try:
             instance = self._create_instance(instance_body, options.no_rmc)

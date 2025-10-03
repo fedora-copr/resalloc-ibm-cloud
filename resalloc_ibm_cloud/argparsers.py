@@ -214,6 +214,11 @@ def powervs_arg_parser():
         action="store_true",
         help="Do not wait for Resource Monitoring and Control to be ready"
     )
+    parser_create.add_argument(
+        "--storage-pool",
+        type=str,
+        help="Storage pool to create the volumes and VMs in (if not specified, default is used)",
+    )
 
     parser_delete = subparsers.add_parser(
         "delete", help="Delete PowerVS instance by its name from IBM Cloud"
