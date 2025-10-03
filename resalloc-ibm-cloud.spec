@@ -4,7 +4,7 @@ for maintaining VMs in IBM Cloud (starting, stopping, cleaning orphans, etc.).
 }
 
 Name:           resalloc-ibm-cloud
-Version:        3.3
+Version:        3.4
 Release:        1%{?dist}
 Summary:        Resource allocator scripts for IBM cloud
 
@@ -55,6 +55,10 @@ BuildRequires:  pyproject-rpm-macros
 
 
 %changelog
+* Fri Oct 03 2025 Jiri Kyjovsky <j1.kyjovsky@gmail.com> 3.4-1
+- fix: ensure correct storage pool assignment with both volumes and VMs
+  (j1.kyjovsky@gmail.com)
+
 * Sat Sep 06 2025 Jiri Kyjovsky <j1.kyjovsky@gmail.com> 3.3-1
 - powervs: add protection from dangling volumes
 - powervs: fix listing of resources
